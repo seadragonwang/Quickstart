@@ -178,7 +178,7 @@ public abstract class TeleBase extends LinearOpMode {
             if (autoUpdate && LaunchZoneChecker.isAnyWheelInLaunchZone(pose)) {
                 double d = getRobotToGoalDistance();
                 targetv = Range.clip(
-                        (500.0 / (130 - 45)) * (getRobotToGoalDistance() - 45) + 1280,
+                        (400.0 / (130 - 45)) * (d - 45) + 1280,
                         1100, UPPER_LIMIT_VELOCITY
                         /*FAR_OUTTAKE_VELOCITY*/
                 );
@@ -244,12 +244,12 @@ public abstract class TeleBase extends LinearOpMode {
             }
 
             // Hood: interpolate linearly based on distance to goal
-            // Near (~45 in) → 0.62, Far (~130 in) → 0.35
+            // Near (~45 in) -> 0.93, Far (~130 in) -> 0.75
             // Only update when change is significant to prevent jitter from LL corrections
             {
                 double d = getRobotToGoalDistance();
-                double newHoodPos = Range.clip((0.93 - (0.27 / 85.0) * (d - 45)), 0.35, 0.93); //
-                if (Math.abs(newHoodPos - hoodPos) > 0.005) {
+                double newHoodPos = Range.clip((0.93 - (0.45 / 85.0) * (d - 45)), 0.35, 0.93); //
+                if (Math.abs(newHoodPos - hoodPos) > 0.006) {
                     hoodPos = newHoodPos;
                 }
             }
