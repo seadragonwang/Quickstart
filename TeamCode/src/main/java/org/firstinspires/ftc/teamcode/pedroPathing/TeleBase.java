@@ -174,7 +174,7 @@ public abstract class TeleBase extends LinearOpMode {
             if (autoUpdate && LaunchZoneChecker.isAnyWheelInLaunchZone(pose)) {
                 double d = getRobotToGoalDistance();
                 targetv = Range.clip(
-                        (500.0 / (130 - 45)) * (getRobotToGoalDistance() - 45) + 1410,
+                        (500.0 / (130 - 45)) * (getRobotToGoalDistance() - 45) + 1300/*1410*/,
                         1000, UPPER_LIMIT_VELOCITY
                         /*FAR_OUTTAKE_VELOCITY*/
                 );
@@ -244,7 +244,7 @@ public abstract class TeleBase extends LinearOpMode {
             // Only update when change is significant to prevent jitter from LL corrections
             {
                 double d = getRobotToGoalDistance();
-                double newHoodPos = Range.clip((0.62 - (0.27 / 85.0) * (d - 45))-0.12, 0.35, 0.62); //
+                double newHoodPos = Range.clip((0.62 - (0.27 / 85.0) * (d - 45))-0.9/*0.12*/, 0.35, 0.62); //
                 if (Math.abs(newHoodPos - hoodPos) > 0.005) {
                     hoodPos = newHoodPos;
                 }
@@ -341,7 +341,7 @@ public abstract class TeleBase extends LinearOpMode {
 
     private void initMotorOne(double kP, double kI, double kD, double F, double position) {
         outtake1 = hardwareMap.get(DcMotorEx.class, "outtake1");
-        outtake1.setDirection(DcMotorEx.Direction.FORWARD);
+        outtake1.setDirection(DcMotorEx.Direction.REVERSE);
         outtake1.setVelocityPIDFCoefficients(kP, kI, kD, F);
         outtake1.setPower(outtakeZeroPower);
         outtake1.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
@@ -352,7 +352,7 @@ public abstract class TeleBase extends LinearOpMode {
 
     private void initMotorTwo(double kP, double kI, double kD, double F, double position) {
         outtake2 = hardwareMap.get(DcMotorEx.class, "outtake2");
-        outtake2.setDirection(DcMotorEx.Direction.REVERSE);
+        outtake2.setDirection(DcMotorEx.Direction.FORWARD);
         outtake2.setVelocityPIDFCoefficients(kP, kI, kD, F);
         outtake2.setPower(outtakeZeroPower);
         outtake2.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
