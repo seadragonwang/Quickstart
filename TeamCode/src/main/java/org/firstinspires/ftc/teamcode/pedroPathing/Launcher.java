@@ -54,7 +54,7 @@ public class Launcher {
 
     public Launcher(HardwareMap hardwareMap, PIDFCoefficients pidfCoefficients) {
         outtake1 = hardwareMap.get(DcMotorEx.class, "outtake1");
-        outtake1.setDirection(DcMotorEx.Direction.FORWARD);
+        outtake1.setDirection(DcMotorEx.Direction.REVERSE);
         outtake1.setVelocityPIDFCoefficients(pidfCoefficients.P, pidfCoefficients.I, pidfCoefficients.D, pidfCoefficients.F);
 
         outtake1.setVelocity(0);
@@ -63,7 +63,8 @@ public class Launcher {
         outtake1.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
 
         outtake2 = hardwareMap.get(DcMotorEx.class, "outtake2");
-        outtake2.setDirection(DcMotorEx.Direction.REVERSE);
+        outtake2.setDirection(DcMotorEx.Direction.FORWARD
+        );
         outtake2.setVelocityPIDFCoefficients(pidfCoefficients.P, pidfCoefficients.I, pidfCoefficients.D, pidfCoefficients.F);
         outtake2.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
         outtake2.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);

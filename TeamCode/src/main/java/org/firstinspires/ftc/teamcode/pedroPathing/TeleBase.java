@@ -58,6 +58,10 @@ public abstract class TeleBase extends LinearOpMode {
     protected DcMotor rightBack = null;
     protected DcMotor leftBack = null;
     protected Servo turretServo = null;
+    /**
+     * max position: 0.93
+     * min position: 0.23
+     */
     protected Servo hoodServo = null;
     protected DcMotorEx outtake1 = null;
     protected DcMotorEx outtake2 = null;
@@ -174,8 +178,8 @@ public abstract class TeleBase extends LinearOpMode {
             if (autoUpdate && LaunchZoneChecker.isAnyWheelInLaunchZone(pose)) {
                 double d = getRobotToGoalDistance();
                 targetv = Range.clip(
-                        (500.0 / (130 - 45)) * (getRobotToGoalDistance() - 45) + 1300/*1410*/,
-                        1000, UPPER_LIMIT_VELOCITY
+                        (400.0 / (130 - 45)) * (d - 45) + 1280,
+                        1100, UPPER_LIMIT_VELOCITY
                         /*FAR_OUTTAKE_VELOCITY*/
                 );
                 targetOuttakeVelocity = targetv;
@@ -240,12 +244,12 @@ public abstract class TeleBase extends LinearOpMode {
             }
 
             // Hood: interpolate linearly based on distance to goal
-            // Near (~45 in) → 0.62, Far (~130 in) → 0.35
+            // Near (~45 in) -> 0.93, Far (~130 in) -> 0.75
             // Only update when change is significant to prevent jitter from LL corrections
             {
                 double d = getRobotToGoalDistance();
-                double newHoodPos = Range.clip((0.62 - (0.27 / 85.0) * (d - 45))-0.9/*0.12*/, 0.35, 0.62); //
-                if (Math.abs(newHoodPos - hoodPos) > 0.005) {
+                double newHoodPos = Range.clip((0.93 - (0.45 / 85.0) * (d - 45)), 0.35, 0.93); //
+                if (Math.abs(newHoodPos - hoodPos) > 0.006) {
                     hoodPos = newHoodPos;
                 }
             }
@@ -400,6 +404,8 @@ public abstract class TeleBase extends LinearOpMode {
         telemetry.addData("Intake state", intakeStatus);
         telemetry.addData("intake velocity", intake1Vel);
         telemetry.addData("Target Velocity", targetOuttakeVelocity);
+        telemetry.addData("Flywheel1 Velocity", outtake1.getVelocity());
+        telemetry.addData("Flywheel2 Velocity", outtake2.getVelocity());
     }
 //    public class BallDetectorThread extends Thread {
 //        private BallDetector ballDetector;
