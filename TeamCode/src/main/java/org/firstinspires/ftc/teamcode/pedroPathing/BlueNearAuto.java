@@ -12,13 +12,13 @@ import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 public class BlueNearAuto extends AutoBase {
 
     private final Pose startPose = new Pose(15.5, 112.5, Math.toRadians(180));
-    private final Pose scorePose = new Pose(50, 81, Math.toRadians(180)); // Wheel touches launch triangle
+    private final Pose scorePose = new Pose(50, 82, Math.toRadians(180)); // Wheel touches launch triangle
     private final Pose pickup1PoseStart = new Pose(24, 52, Math.toRadians(180));
     private final Pose pickup1PoseEnd = new Pose(16, 52, Math.toRadians(180));
     private final Pose openGateGrabStartPose = new Pose(17.5, 60, Math.toRadians(161));
     private final Pose openGateGrabEndPose = new Pose(11.5, 60, Math.toRadians(161));
     private final Pose pickup2PoseStart = new Pose(40, 82, Math.toRadians(180));
-    private final Pose pickup2PoseEnd = new Pose(15, 82, Math.toRadians(180));
+    private final Pose pickup2PoseEnd = new Pose(13, 82, Math.toRadians(180));
     private final Pose leavePose = new Pose(36, 70, Math.toRadians(180));
 
     private PathChain

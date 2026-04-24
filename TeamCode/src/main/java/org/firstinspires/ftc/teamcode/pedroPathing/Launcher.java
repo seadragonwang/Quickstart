@@ -43,19 +43,28 @@ public class Launcher {
     private Timer launchTimer = new Timer();
     public final static double JR_OUTTAKE_BLOCK = 0.78;
     public final static double JR_OUTTAKE_OPEN = 0.0;
-    double FAR_OUTTAKE_VEL = 2200;
+    double FAR_OUTTAKE_VEL = 2100;
     double NEAR_OUTTAKE_VEL = 1620;
     double BLUE_NEAR_TURRET_POS = 0.42;
     double BLUE_FAR_TURRET_POS = 0.383;
     double RED_NEAR_TURRET_POS = 0.582;
     double RED_FAR_TURRET_POS = 0.617;
     double lastOuttakeVel = 0; // remember flywheel speed for LAUNCH state
+    // PIDF stored so we can restore normal F after spin-up
+    private double normalP, normalI, normalD, normalF;
+    private static final double SPINUP_F_BOOST = 20.0; // higher F during initial spin-up
+    private boolean spinupFActive = false;
 
 
     public Launcher(HardwareMap hardwareMap, PIDFCoefficients pidfCoefficients) {
+        normalP = pidfCoefficients.P;
+        normalI = pidfCoefficients.I;
+        normalD = pidfCoefficients.D;
+        normalF = pidfCoefficients.F;
+
         outtake1 = hardwareMap.get(DcMotorEx.class, "outtake1");
         outtake1.setDirection(DcMotorEx.Direction.REVERSE);
-        outtake1.setVelocityPIDFCoefficients(pidfCoefficients.P, pidfCoefficients.I, pidfCoefficients.D, pidfCoefficients.F);
+        outtake1.setVelocityPIDFCoefficients(normalP, normalI, normalD, normalF);
 
         outtake1.setVelocity(0);
         outtake1.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
@@ -65,7 +74,7 @@ public class Launcher {
         outtake2 = hardwareMap.get(DcMotorEx.class, "outtake2");
         outtake2.setDirection(DcMotorEx.Direction.FORWARD
         );
-        outtake2.setVelocityPIDFCoefficients(pidfCoefficients.P, pidfCoefficients.I, pidfCoefficients.D, pidfCoefficients.F);
+        outtake2.setVelocityPIDFCoefficients(normalP, normalI, normalD, normalF);
         outtake2.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
         outtake2.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         outtake2.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
@@ -89,9 +98,26 @@ public class Launcher {
     public void setState(LauncherState state) {
         launcherState = state;
         stateTimer.resetTimer();
+        // Apply boosted F on first spin-up to reach speed faster
+        if (state == LauncherState.START_LAUNCHING_BLUE_NEAR
+                || state == LauncherState.START_LAUNCHING_BLUE_FAR
+                || state == LauncherState.START_LAUNCHING_RED_NEAR
+                || state == LauncherState.START_LAUNCHING_RED_FAR) {
+            if (!spinupFActive) {
+                spinupFActive = true;
+                outtake1.setVelocityPIDFCoefficients(normalP, normalI, normalD, SPINUP_F_BOOST);
+                outtake2.setVelocityPIDFCoefficients(normalP, normalI, normalD, SPINUP_F_BOOST);
+            }
+        }
     }
 
     public void update(){
+        // Restore normal F once flywheel reaches target speed
+        if (spinupFActive && isFlywheelReady()) {
+            spinupFActive = false;
+            outtake1.setVelocityPIDFCoefficients(normalP, normalI, normalD, normalF);
+            outtake2.setVelocityPIDFCoefficients(normalP, normalI, normalD, normalF);
+        }
         switch (launcherState){
             case START_LAUNCHING_BLUE_NEAR:
                 lastOuttakeVel = NEAR_OUTTAKE_VEL;

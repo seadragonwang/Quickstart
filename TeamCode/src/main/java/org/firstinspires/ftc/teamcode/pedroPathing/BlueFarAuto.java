@@ -66,7 +66,7 @@ public class BlueFarAuto extends AutoBase {
         score2 = follower.pathBuilder()
                 .addPath(new BezierCurve(pickup1PoseEnd, new Pose(48, 38), scorePose))
                 .setLinearHeadingInterpolation(pickup1PoseEnd.getHeading(), scorePose.getHeading())
-                .addParametricCallback(0.1, () -> launcher.setState(Launcher.LauncherState.START_LAUNCHING_BLUE_FAR))
+                .addParametricCallback(0.0, () -> launcher.setState(Launcher.LauncherState.START_LAUNCHING_BLUE_FAR))
                 .build();
 
         // pickup2: Switch to pickup mode mid-path
@@ -84,7 +84,7 @@ public class BlueFarAuto extends AutoBase {
         score3 = follower.pathBuilder()
                 .addPath(new BezierCurve(pickup2PoseEnd, new Pose(29, 21), scorePose))
                 .setLinearHeadingInterpolation(pickup2PoseEnd.getHeading(), scorePose.getHeading())
-                .addParametricCallback(0.1, () -> launcher.setState(Launcher.LauncherState.START_LAUNCHING_BLUE_FAR))
+                .addParametricCallback(0.0, () -> launcher.setState(Launcher.LauncherState.START_LAUNCHING_BLUE_FAR))
                 .build();
 
         // pickup3: Switch to pickup mode mid-path
@@ -102,7 +102,7 @@ public class BlueFarAuto extends AutoBase {
         score4 = follower.pathBuilder()
                 .addPath(new BezierCurve(pickup2PoseEnd, new Pose(29, 21), scorePose))
                 .setLinearHeadingInterpolation(pickup2PoseEnd.getHeading(), scorePose.getHeading())
-                .addParametricCallback(0.1, () -> launcher.setState(Launcher.LauncherState.START_LAUNCHING_BLUE_FAR))
+                .addParametricCallback(0.0, () -> launcher.setState(Launcher.LauncherState.START_LAUNCHING_BLUE_FAR))
                 .build();
 
         // pickup4: Switch to pickup mode mid-path
@@ -120,7 +120,7 @@ public class BlueFarAuto extends AutoBase {
         score5 = follower.pathBuilder()
                 .addPath(new BezierCurve(pickup2PoseEnd, new Pose(29, 21), scorePose))
                 .setLinearHeadingInterpolation(pickup2PoseEnd.getHeading(), scorePose.getHeading())
-                .addParametricCallback(0.1, () -> launcher.setState(Launcher.LauncherState.START_LAUNCHING_BLUE_FAR))
+                .addParametricCallback(0.0, () -> launcher.setState(Launcher.LauncherState.START_LAUNCHING_BLUE_FAR))
                 .build();
 
         // pickup5: Switch to pickup mode mid-path
@@ -138,7 +138,7 @@ public class BlueFarAuto extends AutoBase {
         score6 = follower.pathBuilder()
                 .addPath(new BezierCurve(pickup2PoseEnd, new Pose(29, 21), scorePose))
                 .setLinearHeadingInterpolation(pickup2PoseEnd.getHeading(), scorePose.getHeading())
-                .addParametricCallback(0.1, () -> launcher.setState(Launcher.LauncherState.START_LAUNCHING_BLUE_FAR))
+                .addParametricCallback(0.0, () -> launcher.setState(Launcher.LauncherState.START_LAUNCHING_BLUE_FAR))
                 .build();
 
         leave = follower.pathBuilder()

@@ -62,6 +62,42 @@ public class LaunchZoneChecker {
         return false;
     }
 
+    /**
+     * Returns true if the robot center is inside OR within {@code margin} inches of any launch zone.
+     */
+    public static boolean isNearLaunchZone(Pose pose, double margin) {
+        double px = pose.getX();
+        double py = pose.getY();
+        return distToTriangle(px, py, U_AX, U_AY, U_BX, U_BY, U_CX, U_CY) <= margin
+            || distToTriangle(px, py, L_AX, L_AY, L_BX, L_BY, L_CX, L_CY) <= margin;
+    }
+
+    /**
+     * Distance from point (px,py) to the nearest point on or inside the triangle.
+     * Returns 0 if the point is already inside.
+     */
+    private static double distToTriangle(double px, double py,
+                                         double ax, double ay,
+                                         double bx, double by,
+                                         double cx, double cy) {
+        if (pointInTriangle(px, py, ax, ay, bx, by, cx, cy)) return 0.0;
+        double d1 = distToSegment(px, py, ax, ay, bx, by);
+        double d2 = distToSegment(px, py, bx, by, cx, cy);
+        double d3 = distToSegment(px, py, cx, cy, ax, ay);
+        return Math.min(d1, Math.min(d2, d3));
+    }
+
+    /** Minimum distance from point (px,py) to line segment (ax,ay)-(bx,by). */
+    private static double distToSegment(double px, double py,
+                                        double ax, double ay,
+                                        double bx, double by) {
+        double dx = bx - ax, dy = by - ay;
+        double lenSq = dx * dx + dy * dy;
+        if (lenSq == 0) return Math.hypot(px - ax, py - ay);
+        double t = Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / lenSq));
+        return Math.hypot(px - (ax + t * dx), py - (ay + t * dy));
+    }
+
     /** Standard "same-side" triangle containment test using cross products. */
     private static boolean pointInTriangle(double px, double py,
                                            double ax, double ay,
