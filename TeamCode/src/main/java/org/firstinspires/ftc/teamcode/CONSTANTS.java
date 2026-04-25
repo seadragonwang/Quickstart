@@ -33,6 +33,14 @@ public class CONSTANTS {
 
     // Maximum turret rotation in degrees (left or right from center)
     public static final double MAX_TURRET_ANGLE = 135;
+    // Global turret trim: applied to all directions. positive = shift left, negative = shift right.
+    public static double TURRET_ANGLE_OFFSET_DEG = 0.0;
+    // Extra trim applied ONLY when turret turns right (errorDegrees < 0).
+    // If turret overshoots right only when turning right, increase this (positive = correct left).
+    public static double TURRET_ANGLE_OFFSET_RIGHT_DEG = 0.0;
+    // Scale factor applied to errorDegrees before lookup. Values < 1.0 reduce overshoot on both sides.
+    // If turret overshoots both left AND right, reduce this below 1.0 (e.g. 0.85).
+    public static double TURRET_ANGLE_SCALE = 0.85;
     public static final double LIMELIGHT_APRIL_TAG_POS = 0.42;
     public static final double LIMELIGHT_BALL_POS = 0.53;
     public static final double TURRET_POSITION_PER_DEGREE =0.0016798245614035089;

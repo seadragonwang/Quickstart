@@ -178,6 +178,8 @@ public abstract class TeleBase extends LinearOpMode {
             } else if (gamepad2.dpad_up) {
                 autoUpdate = true;
                 velocityTimer.reset();
+                // Snap filtered distance to current actual so there's no lag on entry
+                filteredDistance = getRobotToGoalDistance();
             }
 
             // Update filtered distance every loop so it's always current when autoUpdate fires
@@ -189,10 +191,10 @@ public abstract class TeleBase extends LinearOpMode {
                 UPPER_LIMIT_VELOCITY = CLOSE_OUTTAKE_VELOCITY + 100;
             }
 
-            if (autoUpdate && LaunchZoneChecker.isNearLaunchZone(pose, LAUNCH_ZONE_PRE_SPIN_MARGIN)) {
+            if (autoUpdate && LaunchZoneChecker.isNearCloseLaunchZone(pose, LAUNCH_ZONE_PRE_SPIN_MARGIN)) {
                 // Pre-spin flywheel based on distance when within 10 in of launch zone,
                 // and continue updating once inside
-                filteredDistance = 0.5 * filteredDistance + 0.5 * getRobotToGoalDistance();
+                filteredDistance = 0.2 * filteredDistance + 0.8 * getRobotToGoalDistance();
                 batteryVoltage = getBatteryVoltage();
 
                 ShooterModel.ShotSolution sol = shooterModel.solve(filteredDistance, batteryVoltage);
@@ -234,6 +236,14 @@ public abstract class TeleBase extends LinearOpMode {
                 while (turretError < -Math.PI) turretError += 2 * Math.PI;
 
                 double errorDegrees = Math.toDegrees(turretError);
+                // Scale down to reduce overshoot on both sides
+                errorDegrees *= CONSTANTS.TURRET_ANGLE_SCALE;
+                // Apply global trim (positive = left, negative = right)
+                errorDegrees += CONSTANTS.TURRET_ANGLE_OFFSET_DEG;
+                // Apply right-side-only trim (positive = correct left when overshooting right)
+                if (errorDegrees < 0) {
+                    errorDegrees += CONSTANTS.TURRET_ANGLE_OFFSET_RIGHT_DEG;
+                }
                 errorDegrees = Range.clip(errorDegrees, -MAX_TURRET_ANGLE, MAX_TURRET_ANGLE);
 
                 turretPos = TurretMapper.degreesToServoPos(errorDegrees);
@@ -417,8 +427,8 @@ public abstract class TeleBase extends LinearOpMode {
         telemetry.addData("distance to goal", getRobotToGoalDistance());
         telemetry.addData("autoUpdate", autoUpdate);
         telemetry.addData("in launch zone", LaunchZoneChecker.isAnyWheelInLaunchZone(follower.getPose()));
-        telemetry.addData("near launch zone", LaunchZoneChecker.isNearLaunchZone(follower.getPose(), LAUNCH_ZONE_PRE_SPIN_MARGIN));
-        telemetry.addData("ShooterModel active", autoUpdate && LaunchZoneChecker.isNearLaunchZone(follower.getPose(), LAUNCH_ZONE_PRE_SPIN_MARGIN));
+        telemetry.addData("near close launch zone", LaunchZoneChecker.isNearCloseLaunchZone(follower.getPose(), LAUNCH_ZONE_PRE_SPIN_MARGIN));
+        telemetry.addData("ShooterModel active", autoUpdate && LaunchZoneChecker.isNearCloseLaunchZone(follower.getPose(), LAUNCH_ZONE_PRE_SPIN_MARGIN));
         telemetry.addData("turretpos", turretPos);
         telemetry.addData("turretError", Math.toDegrees(turretError));
         telemetry.addData("x pos", follower.getPose().getX());
@@ -429,6 +439,8 @@ public abstract class TeleBase extends LinearOpMode {
         telemetry.addData("hood", hoodPos);
         telemetry.addData("LL valid", limelightLocalizer.isLastResultValid());
         telemetry.addData("LL reject", limelightLocalizer.getLastRejectReason());
+        telemetry.addData("LL Pedro X", limelightLocalizer.getLastPedroX());
+        telemetry.addData("LL Pedro Y", limelightLocalizer.getLastPedroY());
         telemetry.addData("Intake state", intakeStatus);
         telemetry.addData("intake velocity", intake1Vel);
         telemetry.addData("Target Velocity", targetOuttakeVelocity);

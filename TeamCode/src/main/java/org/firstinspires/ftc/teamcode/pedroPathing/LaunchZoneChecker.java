@@ -69,7 +69,17 @@ public class LaunchZoneChecker {
         double px = pose.getX();
         double py = pose.getY();
         return distToTriangle(px, py, U_AX, U_AY, U_BX, U_BY, U_CX, U_CY) <= margin
-            || distToTriangle(px, py, L_AX, L_AY, L_BX, L_BY, L_CX, L_CY) <= margin;
+             || distToTriangle(px, py, L_AX, L_AY, L_BX, L_BY, L_CX, L_CY) <= margin;
+    }
+
+    /**
+     * Returns true if the robot center is inside OR within {@code margin} inches of the
+     * CLOSE (upper) launch zone only — (0,144), (72,72), (144,144).
+     */
+    public static boolean isNearCloseLaunchZone(Pose pose, double margin) {
+        double px = pose.getX();
+        double py = pose.getY();
+        return distToTriangle(px, py, U_AX, U_AY, U_BX, U_BY, U_CX, U_CY) <= margin;
     }
 
     /**
