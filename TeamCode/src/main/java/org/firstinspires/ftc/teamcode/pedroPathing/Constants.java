@@ -24,12 +24,12 @@ public class Constants {
                     0.08,
                     0,
                     0.001,
-                    0.03))
+                    0.027))
             .headingPIDFCoefficients(new PIDFCoefficients(
-                    1.0,
+                    1.3,
                     0.0,
                     0.01,
-                    0.025))
+                    0.03))
             .drivePIDFCoefficients(new FilteredPIDFCoefficients(
                     0.02,
                     0.0,
