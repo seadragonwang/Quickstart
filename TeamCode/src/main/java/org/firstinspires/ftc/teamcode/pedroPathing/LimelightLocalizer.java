@@ -70,6 +70,11 @@ public class LimelightLocalizer {
     private double lastRawX = 0;
     private double lastRawY = 0;
     private double lastYawDegrees = 0;
+    private double lastPedroX = 0;
+    private double lastPedroY = 0;
+    // Tunable offsets (inches) applied after coordinate conversion — set these to correct systematic bias
+    private double xOffsetInches = 0;
+    private double yOffsetInches = 0;
 
     /**
      * Initialize the Limelight 3A.
@@ -197,8 +202,12 @@ public class LimelightLocalizer {
         }
 
         // LL +X = Pedro -Y, LL +Y = Pedro +X
-        double pedroX = (limelightYMeters * METERS_TO_INCHES) + FIELD_OFFSET_INCHES;
-        double pedroY = (-limelightXMeters * METERS_TO_INCHES) + FIELD_OFFSET_INCHES;
+        double pedroX = (limelightYMeters * METERS_TO_INCHES) + FIELD_OFFSET_INCHES + xOffsetInches;
+        double pedroY = (-limelightXMeters * METERS_TO_INCHES) + FIELD_OFFSET_INCHES + yOffsetInches;
+
+        // Store computed Pedro coordinates for telemetry/debugging
+        lastPedroX = pedroX;
+        lastPedroY = pedroY;
 
         // Sanity check: reject if position is outside the field
         if (pedroX < -12 || pedroX > 156 || pedroY < -12 || pedroY > 156) {
@@ -304,6 +313,22 @@ public class LimelightLocalizer {
     public double getLastRawY() {
         return lastRawY;
     }
+
+    /**
+     * Set a fixed X/Y offset (inches) applied after coordinate conversion.
+     * Use this to correct systematic position bias: measure where the robot actually
+     * is, compare to what the LL reports, and pass the difference here.
+     */
+    public void setPoseOffsetInches(double xOffset, double yOffset) {
+        this.xOffsetInches = xOffset;
+        this.yOffsetInches = yOffset;
+    }
+
+    /** @return last computed Pedro X (inches) before pose update — useful for debugging */
+    public double getLastPedroX() { return lastPedroX; }
+
+    /** @return last computed Pedro Y (inches) before pose update — useful for debugging */
+    public double getLastPedroY() { return lastPedroY; }
 
     /** Stop the Limelight polling. Call when OpMode ends. */
     public void stop() {

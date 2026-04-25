@@ -46,7 +46,7 @@ public class Launcher {
     double FAR_OUTTAKE_VEL = 2100;
     double NEAR_OUTTAKE_VEL = 1620;
     double BLUE_NEAR_TURRET_POS = 0.42;
-    double BLUE_FAR_TURRET_POS = 0.383;
+    double BLUE_FAR_TURRET_POS = 0.388; // TODO: tune — currently aiming right of goal; adjust until centered
     double RED_NEAR_TURRET_POS = 0.582;
     double RED_FAR_TURRET_POS = 0.617;
     double lastOuttakeVel = 0; // remember flywheel speed for LAUNCH state
