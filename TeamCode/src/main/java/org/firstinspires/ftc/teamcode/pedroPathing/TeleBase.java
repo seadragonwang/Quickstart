@@ -45,7 +45,15 @@ public abstract class TeleBase extends LinearOpMode {
     protected abstract double getGoalY();
     protected abstract double getLimelightStartingHeadingDeg();
     protected abstract int[] getValidTagIds();
-
+    // class fields
+    private double batteryVoltage = 12.5;
+    private static final double V_NOM = 12.5;
+    private static final double KVOLT = 35.0; // ticks/s per volt (tune)
+    private ShooterModel shooterModel;
+    private double filteredDistance = 70.0;
+    private double lastFComp = -1;
+    /** How far outside the launch zone (inches) to begin pre-spinning the flywheel */
+    private static final double LAUNCH_ZONE_PRE_SPIN_MARGIN = 10.0;
     // --- Hardware & state (all shared) ---
     protected Follower follower;
     protected double angleToGoal;
@@ -70,7 +78,7 @@ public abstract class TeleBase extends LinearOpMode {
     protected double intake1Power = 0.0;
     protected double intake2Power = 0.0;
     protected double targetv = 0;
-    protected double UPPER_LIMIT_VELOCITY = CLOSE_OUTTAKE_VELOCITY + 100;
+    protected double UPPER_LIMIT_VELOCITY = FAR_OUTTAKE_VELOCITY;
     protected double lastTargetV = 0;
     protected boolean autoUpdate = false;
     protected ElapsedTime velocityTimer = new ElapsedTime();
@@ -101,9 +109,7 @@ public abstract class TeleBase extends LinearOpMode {
     protected double intake1Vel = 0.0;
     protected INTAKE_STATUS intakeStatus = INTAKE_STATUS.INTAKE_STOPPED;
     protected Servo pivot;
-//    protected BallDetector ballDetector;
-
-//    public BallDetectorThread ballDetectorThread;
+    protected BallDetectorThread ballDetectorThread;
     protected LimelightLocalizer limelightLocalizer;
 
     protected ElapsedTime intakeTimer = new ElapsedTime();
@@ -113,6 +119,15 @@ public abstract class TeleBase extends LinearOpMode {
     protected VisionPortal visionPortal;
     protected ElapsedTime loopTimer = new ElapsedTime();
 
+    private double getBatteryVoltage() {
+        double v = Double.POSITIVE_INFINITY;
+        for (com.qualcomm.robotcore.hardware.VoltageSensor sensor : hardwareMap.voltageSensor) {
+            double sv = sensor.getVoltage();
+            if (sv > 0) v = Math.min(v, sv); // lowest valid is safest
+        }
+        return Double.isInfinite(v) ? 12.0 : v;
+    }
+
     @Override
     public void runOpMode() {
         telemetry.addData("Status", "Initialized");
@@ -121,7 +136,7 @@ public abstract class TeleBase extends LinearOpMode {
         initHardware();
         follower = Constants.createFollower(hardwareMap);
         startingPose = getStartingPose();
-        boolean aiming = false;
+        boolean aiming = true;
         follower.setStartingPose(startingPose);
         follower.startTeleopDrive();
 
@@ -150,7 +165,6 @@ public abstract class TeleBase extends LinearOpMode {
             intake1Vel = intake1.getVelocity();
 
 //            ballDetector.update();
-
             // OUTTAKE
             if (gamepad2.left_bumper) {
                 targetOuttakeVelocity = FAR_OUTTAKE_VELOCITY+50;
@@ -165,8 +179,8 @@ public abstract class TeleBase extends LinearOpMode {
                 autoUpdate = true;
                 velocityTimer.reset();
             }
-            outtake1.setVelocity(targetOuttakeVelocity);
-            outtake2.setVelocity(targetOuttakeVelocity);
+
+            // Update filtered distance every loop so it's always current when autoUpdate fires
 
             // TOGGLE
             if (gamepad1.x && gamepad1.b) {
@@ -175,15 +189,22 @@ public abstract class TeleBase extends LinearOpMode {
                 UPPER_LIMIT_VELOCITY = CLOSE_OUTTAKE_VELOCITY + 100;
             }
 
-            if (autoUpdate && LaunchZoneChecker.isAnyWheelInLaunchZone(pose)) {
-                double d = getRobotToGoalDistance();
-                targetv = Range.clip(
-                        (400.0 / (130 - 45)) * (d - 45) + 1280,
-                        1100, UPPER_LIMIT_VELOCITY
-                        /*FAR_OUTTAKE_VELOCITY*/
-                );
-                targetOuttakeVelocity = targetv;
+            if (autoUpdate && LaunchZoneChecker.isNearLaunchZone(pose, LAUNCH_ZONE_PRE_SPIN_MARGIN)) {
+                // Pre-spin flywheel based on distance when within 10 in of launch zone,
+                // and continue updating once inside
+                filteredDistance = 0.5 * filteredDistance + 0.5 * getRobotToGoalDistance();
+                batteryVoltage = getBatteryVoltage();
+
+                ShooterModel.ShotSolution sol = shooterModel.solve(filteredDistance, batteryVoltage);
+                targetOuttakeVelocity = Range.clip(sol.velocityTicksPerSec, 1100, UPPER_LIMIT_VELOCITY);
+
+                if (Math.abs(sol.hoodPos - hoodPos) > 0.006) {
+                    hoodPos = sol.hoodPos;
+                }
             }
+            outtake1.setVelocity(targetOuttakeVelocity);
+            outtake2.setVelocity(targetOuttakeVelocity);
+            hoodServo.setPosition(Range.clip(hoodPos, HOOD_MIN_POS, HOOD_MAX_POS));
 
             // AIMING
             if (gamepad1.right_trigger > 0.3) {
@@ -234,9 +255,9 @@ public abstract class TeleBase extends LinearOpMode {
                 intake2Power = 1.0;
                 intake1Power = CLOSE_INTAKE_POWER;
                 intakeStatus = INTAKE_STATUS.INTAKE_STARTED;
-//                if (targetOuttakeVelocity > 0) {
-//                    ballDetector.resetLoadedCount();
-//                }
+                if (targetOuttakeVelocity > 0) {
+                    ballDetectorThread.getBallDetector().resetLoadedCount();
+                }
             } else if (gamepad2.b) {
                 intake2Power = 0.0;
                 intake1Power = 0;
@@ -246,14 +267,13 @@ public abstract class TeleBase extends LinearOpMode {
             // Hood: interpolate linearly based on distance to goal
             // Near (~45 in) -> 0.93, Far (~130 in) -> 0.75
             // Only update when change is significant to prevent jitter from LL corrections
-            {
-                double d = getRobotToGoalDistance();
-                double newHoodPos = Range.clip((0.93 - (0.45 / 85.0) * (d - 45)), 0.35, 0.93); //
-                if (Math.abs(newHoodPos - hoodPos) > 0.006) {
-                    hoodPos = newHoodPos;
-                }
-            }
-            hoodServo.setPosition(Range.clip(hoodPos, HOOD_MIN_POS, HOOD_MAX_POS));
+//            {
+//                double d = getRobotToGoalDistance();
+//                double newHoodPos = Range.clip((0.93 - (0.45 / 85.0) * (d - 45)), 0.35, 0.93); //
+//                if (Math.abs(newHoodPos - hoodPos) > 0.006) {
+//                    hoodPos = newHoodPos;
+//                }
+//            }
 
             // Intake jam detection (intake1Vel already read above)
             if (intakeStatus == INTAKE_STATUS.INTAKE_STARTED && intake1Vel > 800) {
@@ -274,6 +294,7 @@ public abstract class TeleBase extends LinearOpMode {
             showTelemetry();
             telemetry.update();
         }
+        ballDetectorThread.stopThread();
     }
 
     // --- Hardware init ---
@@ -287,9 +308,13 @@ public abstract class TeleBase extends LinearOpMode {
         initIntake();
         initTurret();
 
+        ballDetectorThread = new BallDetectorThread(hardwareMap);
+        ballDetectorThread.start();
+
         limelightLocalizer = new LimelightLocalizer();
         limelightLocalizer.init(hardwareMap, getLimelightStartingHeadingDeg());
         limelightLocalizer.setValidTagIds(getValidTagIds());
+        shooterModel = new ShooterModel(HOOD_MIN_POS, HOOD_MAX_POS, 1100, 2500);
     }
 
     private void initAprilTag() {
@@ -391,6 +416,9 @@ public abstract class TeleBase extends LinearOpMode {
         loopTimer.reset();
         telemetry.addData("distance to goal", getRobotToGoalDistance());
         telemetry.addData("autoUpdate", autoUpdate);
+        telemetry.addData("in launch zone", LaunchZoneChecker.isAnyWheelInLaunchZone(follower.getPose()));
+        telemetry.addData("near launch zone", LaunchZoneChecker.isNearLaunchZone(follower.getPose(), LAUNCH_ZONE_PRE_SPIN_MARGIN));
+        telemetry.addData("ShooterModel active", autoUpdate && LaunchZoneChecker.isNearLaunchZone(follower.getPose(), LAUNCH_ZONE_PRE_SPIN_MARGIN));
         telemetry.addData("turretpos", turretPos);
         telemetry.addData("turretError", Math.toDegrees(turretError));
         telemetry.addData("x pos", follower.getPose().getX());
@@ -406,12 +434,13 @@ public abstract class TeleBase extends LinearOpMode {
         telemetry.addData("Target Velocity", targetOuttakeVelocity);
         telemetry.addData("Flywheel1 Velocity", outtake1.getVelocity());
         telemetry.addData("Flywheel2 Velocity", outtake2.getVelocity());
+        telemetry.addData("Balls loaded", ballDetectorThread.getBallDetector().getBallsLoaded());
+        telemetry.addData("Ball distance mm", ballDetectorThread.getBallDetector().getDistanceMM());
+        telemetry.addData("Battery V", batteryVoltage);
+        telemetry.addData("Distance filt", filteredDistance);
+        telemetry.addData("Vel err 1", targetOuttakeVelocity - outtake1.getVelocity());
+        telemetry.addData("Vel err 2", targetOuttakeVelocity - outtake2.getVelocity());
+
     }
-//    public class BallDetectorThread extends Thread {
-//        private BallDetector ballDetector;
-//        public BallDetectorThread() {
-//            ballDetector = new BallDetector(hardwareMap);
-//        }
-//    }
 }
 
