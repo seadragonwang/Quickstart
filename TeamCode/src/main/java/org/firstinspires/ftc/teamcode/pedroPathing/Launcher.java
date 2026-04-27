@@ -45,7 +45,7 @@ public class Launcher {
     public final static double JR_OUTTAKE_OPEN = 0.0;
     double FAR_OUTTAKE_VEL = 2100;
     double NEAR_OUTTAKE_VEL = 1620;
-    double BLUE_NEAR_TURRET_POS = 0.42;
+    double BLUE_NEAR_TURRET_POS = 0.644;
     double BLUE_FAR_TURRET_POS = 0.388; // TODO: tune — currently aiming right of goal; adjust until centered
     double RED_NEAR_TURRET_POS = 0.582;
     double RED_FAR_TURRET_POS = 0.617;
@@ -125,7 +125,7 @@ public class Launcher {
                 outtake2.setVelocity(NEAR_OUTTAKE_VEL);
                 intake1.setPower(0);
                 intake2.setPower(0);
-                turretServo.setPosition(Range.clip(BLUE_NEAR_TURRET_POS, 0.28, 0.694)); // 0.422
+                turretServo.setPosition(Range.clip(BLUE_NEAR_TURRET_POS, 0.421, 0.93)); // 0.422
                 hoodServo.setPosition(Range.clip(0.62,HOOD_MIN_POS,HOOD_MAX_POS));
                 break;
             case START_LAUNCHING_BLUE_FAR:

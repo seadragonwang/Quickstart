@@ -7,10 +7,10 @@ public class CONSTANTS {
     public final static double CLOSE_INTAKE_POWER = 0.9;
     public final static double JR_OUTTAKE_BLOCK = 0.78;
     public final static double JR_OUTTAKE_OPEN = 0.0;
-    public final static int FAR_OUTTAKE_VELOCITY = 2200; // tip of far triangle: 2200, back part 2300
-    public final static int CLOSE_OUTTAKE_VELOCITY = 1600;
-    public final static double HOOD_MAX_POS = 0.92;
-    public final static double HOOD_MIN_POS = 0.2;
+    public final static int FAR_OUTTAKE_VELOCITY = 2250; // tip of far triangle: 2200, back part 2300
+    public final static int CLOSE_OUTTAKE_VELOCITY = 1620;
+    public final static double HOOD_MAX_POS = 0.93;
+    public final static double HOOD_MIN_POS = 0.421;
 
     public final static double kP = 2.6/*1.25*/;
     public final static double kI = 0.08;

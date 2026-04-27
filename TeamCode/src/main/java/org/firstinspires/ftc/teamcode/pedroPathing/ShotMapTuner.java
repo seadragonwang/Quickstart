@@ -95,25 +95,23 @@ public class ShotMapTuner extends LinearOpMode {
             follower.setTeleOpDrive(y, -x, rx);
 
             // controls:
-            // D-pad up/down: velocity fine +/-10
-            // D-pad right/left: velocity coarse +/-50
-            // A/B: hood fine +/-
-            // Y/X: hood coarse +/-
-            // RB: shoot on, LB: shoot off
-            if (edge(gamepad2.dpad_up, lastDU)) vel += VEL_STEP_FINE;
-            if (edge(gamepad2.dpad_down, lastDD)) vel -= VEL_STEP_FINE;
-            if (edge(gamepad2.dpad_right, lastDR)) vel += VEL_STEP_COARSE;
-            if (edge(gamepad2.dpad_left, lastDL)) vel -= VEL_STEP_COARSE;
+            // D-pad up/down: velocity fine +/-10  (hold to repeat)
+            // D-pad right/left: velocity coarse +/-50  (hold to repeat)
+            // A/B: hood fine +/-  (hold to repeat)
+            // Y/X: hood coarse +/-  (hold to repeat)
+            // RB: toggle flywheel on/off
+            if (gamepad2.dpad_up)    vel += VEL_STEP_FINE;
+            if (gamepad2.dpad_down)  vel -= VEL_STEP_FINE;
+            if (gamepad2.dpad_right) vel += VEL_STEP_COARSE;
+            if (gamepad2.dpad_left)  vel -= VEL_STEP_COARSE;
 
-            if (edge(gamepad2.a, lastA)) hood += HOOD_STEP_FINE;
-            if (edge(gamepad2.b, lastB)) hood -= HOOD_STEP_FINE;
-            if (edge(gamepad2.y, lastY)) hood += HOOD_STEP_COARSE;
-            if (edge(gamepad2.x, lastX)) hood -= HOOD_STEP_COARSE;
+            if (gamepad2.a) hood += HOOD_STEP_FINE;
+            if (gamepad2.b) hood -= HOOD_STEP_FINE;
+            if (gamepad2.y) hood += HOOD_STEP_COARSE;
+            if (gamepad2.x) hood -= HOOD_STEP_COARSE;
 
-            if (edge(gamepad2.right_bumper, lastRB)) {
-                flywheelOn = true;
-            }
-            if (edge(gamepad2.left_bumper, lastLB)) {
+            if (edge(gamepad2.right_bumper, lastRB)) flywheelOn = !flywheelOn;
+            if (edge(gamepad2.left_bumper,  lastLB)) {
                 flywheelOn = false;
                 outtake1.setVelocity(0);
                 outtake2.setVelocity(0);
@@ -174,6 +172,9 @@ public class ShotMapTuner extends LinearOpMode {
             }
 
             telemetry.update();
+
+            // Rate-limit to ~20 Hz so hold-to-repeat adjustments don't change too fast
+            sleep(50);
 
             // update last states
             lastA = gamepad2.a; lastB = gamepad2.b; lastX = gamepad2.x; lastY = gamepad2.y;
