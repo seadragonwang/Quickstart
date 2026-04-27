@@ -2,6 +2,9 @@ package org.firstinspires.ftc.teamcode.pedroPathing;
 
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
+import com.qualcomm.robotcore.hardware.DistanceSensor;
+
+import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 
 /**
  * Ball Detector Tuner
@@ -22,104 +25,105 @@ import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 public class BallDetectorTuner extends OpMode {
     private BallDetector ballDetector;
 
-    private double detectThreshold = 35.0; // ball detected below this
-    private double clearThreshold  = 50.0; // ball cleared above this
-    private boolean dpadUpPrev = false;
-    private boolean dpadDownPrev = false;
-    private boolean dpadLeftPrev = false;
-    private boolean dpadRightPrev = false;
-    private boolean aPrev = false;
+    // Right sensor (REV 2M) thresholds
+    private double detectThreshold = 35.0;
+    private double clearThreshold  = 50.0;
 
-    // Track min/max distance for calibration
-    private double minDistance = Double.MAX_VALUE;
-    private double maxDistance = 0;
+    // Left sensor (Color Sensor V3 proximity) thresholds
+    private double colorDetectThreshold = 60.0;
+    private double colorClearThreshold  = 75.0;
+
+    // Raw left sensor reference for live telemetry
+    private DistanceSensor leftSensorRaw = null;
+    private boolean leftSensorAvailable = false;
+
+    private boolean dpadUpPrev = false, dpadDownPrev = false;
+    private boolean dpadLeftPrev = false, dpadRightPrev = false;
+    private boolean aPrev = false;
+    // gamepad2 for color sensor thresholds
+    private boolean g2dpadUpPrev = false, g2dpadDownPrev = false;
+    private boolean g2dpadLeftPrev = false, g2dpadRightPrev = false;
+
+    private double minDistance = Double.MAX_VALUE, maxDistance = 0;
+    private double colorMinDist = Double.MAX_VALUE, colorMaxDist = 0;
 
     @Override
     public void init() {
         ballDetector = new BallDetector(hardwareMap);
         ballDetector.setDetectionDistance(detectThreshold, clearThreshold);
+        ballDetector.setColorDetectionDistance(colorDetectThreshold, colorClearThreshold);
+
+        // Get direct reference to left sensor for raw telemetry
+        try {
+            leftSensorRaw = hardwareMap.get(DistanceSensor.class, "ball_detector");
+            leftSensorAvailable = true;
+        } catch (Exception e) {
+            leftSensorAvailable = false;
+        }
 
         telemetry.addLine("=== BALL DETECTOR TUNER ===");
-        telemetry.addLine("D-pad Up/Down: adjust detect threshold");
-        telemetry.addLine("D-pad Left/Right: adjust clear threshold");
-        telemetry.addLine("A: reset counter & min/max");
-        telemetry.addLine("Pass balls in front of sensor to test");
+        telemetry.addLine("Gamepad1: tune RIGHT sensor  Gamepad2: tune LEFT sensor");
+        telemetry.addLine("D-pad Up/Down: detect threshold  D-pad Right/Left: clear threshold");
+        telemetry.addLine("A (gp1): reset counters & min/max");
         telemetry.update();
     }
 
     @Override
     public void loop() {
-        // Adjust detect threshold with D-pad up/down
-        if (gamepad1.dpad_up && !dpadUpPrev) {
-            detectThreshold += 5.0;
-            ballDetector.setDetectionDistance(detectThreshold, clearThreshold);
-        }
-        if (gamepad1.dpad_down && !dpadDownPrev) {
-            detectThreshold -= 5.0;
-            if (detectThreshold < 5.0) detectThreshold = 5.0;
-            ballDetector.setDetectionDistance(detectThreshold, clearThreshold);
-        }
-        // Adjust clear threshold with D-pad left/right
-        if (gamepad1.dpad_right && !dpadRightPrev) {
-            clearThreshold += 5.0;
-            ballDetector.setDetectionDistance(detectThreshold, clearThreshold);
-        }
-        if (gamepad1.dpad_left && !dpadLeftPrev) {
-            clearThreshold -= 5.0;
-            if (clearThreshold < detectThreshold + 5.0) clearThreshold = detectThreshold + 5.0;
-            ballDetector.setDetectionDistance(detectThreshold, clearThreshold);
-        }
-        dpadUpPrev = gamepad1.dpad_up;
-        dpadDownPrev = gamepad1.dpad_down;
-        dpadLeftPrev = gamepad1.dpad_left;
-        dpadRightPrev = gamepad1.dpad_right;
+        // --- Gamepad1: right sensor thresholds ---
+        if (gamepad1.dpad_up    && !dpadUpPrev)   { detectThreshold += 5; ballDetector.setDetectionDistance(detectThreshold, clearThreshold); }
+        if (gamepad1.dpad_down  && !dpadDownPrev)  { detectThreshold = Math.max(5, detectThreshold - 5); ballDetector.setDetectionDistance(detectThreshold, clearThreshold); }
+        if (gamepad1.dpad_right && !dpadRightPrev) { clearThreshold += 5; ballDetector.setDetectionDistance(detectThreshold, clearThreshold); }
+        if (gamepad1.dpad_left  && !dpadLeftPrev)  { clearThreshold = Math.max(detectThreshold + 5, clearThreshold - 5); ballDetector.setDetectionDistance(detectThreshold, clearThreshold); }
+        dpadUpPrev = gamepad1.dpad_up; dpadDownPrev = gamepad1.dpad_down;
+        dpadLeftPrev = gamepad1.dpad_left; dpadRightPrev = gamepad1.dpad_right;
 
-        // Reset on A press
+        // --- Gamepad2: left color sensor thresholds ---
+        if (gamepad2.dpad_up    && !g2dpadUpPrev)   { colorDetectThreshold += 5; ballDetector.setColorDetectionDistance(colorDetectThreshold, colorClearThreshold); }
+        if (gamepad2.dpad_down  && !g2dpadDownPrev)  { colorDetectThreshold = Math.max(5, colorDetectThreshold - 5); ballDetector.setColorDetectionDistance(colorDetectThreshold, colorClearThreshold); }
+        if (gamepad2.dpad_right && !g2dpadRightPrev) { colorClearThreshold += 5; ballDetector.setColorDetectionDistance(colorDetectThreshold, colorClearThreshold); }
+        if (gamepad2.dpad_left  && !g2dpadLeftPrev)  { colorClearThreshold = Math.max(colorDetectThreshold + 5, colorClearThreshold - 5); ballDetector.setColorDetectionDistance(colorDetectThreshold, colorClearThreshold); }
+        g2dpadUpPrev = gamepad2.dpad_up; g2dpadDownPrev = gamepad2.dpad_down;
+        g2dpadLeftPrev = gamepad2.dpad_left; g2dpadRightPrev = gamepad2.dpad_right;
+
+        // Reset
         if (gamepad1.a && !aPrev) {
             ballDetector.reset();
-            minDistance = Double.MAX_VALUE;
-            maxDistance = 0;
+            minDistance = Double.MAX_VALUE; maxDistance = 0;
+            colorMinDist = Double.MAX_VALUE; colorMaxDist = 0;
         }
         aPrev = gamepad1.a;
 
-        // Update detector
         ballDetector.update();
 
-        // Get raw distance
-        double distanceMM = ballDetector.getDistanceMM();
+        double distMM = ballDetector.getDistanceMM();
+        if (distMM < 2000) { minDistance = Math.min(minDistance, distMM); maxDistance = Math.max(maxDistance, distMM); }
 
-        // Track min/max
-        if (distanceMM < 2000) { // ignore out-of-range readings
-            if (distanceMM < minDistance) minDistance = distanceMM;
-            if (distanceMM > maxDistance) maxDistance = distanceMM;
-        }
+        double colorDistMM = leftSensorAvailable ? leftSensorRaw.getDistance(DistanceUnit.MM) : -1;
+        if (leftSensorAvailable && colorDistMM < 2000) { colorMinDist = Math.min(colorMinDist, colorDistMM); colorMaxDist = Math.max(colorMaxDist, colorDistMM); }
 
-        // Display
-        telemetry.addLine("=== BALL DETECTOR TUNER (REV 2M) ===");
+        // --- Telemetry ---
+        telemetry.addLine("=== RIGHT SENSOR (REV 2M) — Gamepad1 ===");
+        telemetry.addData("Distance (mm)",      String.format("%.1f", distMM));
+        telemetry.addData("Min / Max (mm)",     String.format("%.1f / %.1f", minDistance == Double.MAX_VALUE ? 0 : minDistance, maxDistance));
+        telemetry.addData("Detect below (mm)",  String.format("%.1f", detectThreshold));
+        telemetry.addData("Clear above  (mm)",  String.format("%.1f", clearThreshold));
+        telemetry.addData("rightBall?",          ballDetector.isRightBallPresent() ? "YES" : "no");
         telemetry.addLine("");
 
-        telemetry.addLine("--- DISTANCE ---");
-        telemetry.addData("Distance (mm)", String.format("%.1f", distanceMM));
-        telemetry.addData("Min Distance (mm)", String.format("%.1f", minDistance));
-        telemetry.addData("Max Distance (mm)", String.format("%.1f", maxDistance));
+        telemetry.addLine("=== LEFT SENSOR (REV 2M) — Gamepad2 ===");
+        telemetry.addData("Distance (mm)",      String.format("%.1f", colorDistMM));
+        telemetry.addData("Min / Max (mm)",     String.format("%.1f / %.1f", colorMinDist == Double.MAX_VALUE ? 0 : colorMinDist, colorMaxDist));
+        telemetry.addData("Detect below (mm)",  String.format("%.1f", colorDetectThreshold));
+        telemetry.addData("Clear above  (mm)",  String.format("%.1f", colorClearThreshold));
+        telemetry.addData("leftBall?",           ballDetector.isLeftBallPresent() ? "YES" : "no");
         telemetry.addLine("");
 
-        telemetry.addLine("--- THRESHOLDS (hysteresis) ---");
-        telemetry.addData("Detect below (mm)", String.format("%.1f", detectThreshold));
-        telemetry.addData("Clear above (mm)", String.format("%.1f", clearThreshold));
-        telemetry.addLine("");
-
-        telemetry.addLine("--- DETECTION ---");
-        telemetry.addData("Ball Present?", ballDetector.isBallPresent() ? "YES <<<" : "no");
-        telemetry.addData("Ball Count", ballDetector.getBallCount());
-        telemetry.addData("Balls Loaded", ballDetector.getBallsLoaded());
-        telemetry.addLine("");
-
-        telemetry.addLine("--- CONTROLS ---");
-        telemetry.addLine("D-pad Up/Down: detect threshold (+/-5mm)");
-        telemetry.addLine("D-pad Right/Left: clear threshold (+/-5mm)");
-        telemetry.addLine("A: reset counter & min/max");
-
+        telemetry.addLine("=== COMBINED ===");
+        telemetry.addData("Ball Present?",  ballDetector.isBallPresent() ? "YES <<<" : "no");
+        telemetry.addData("Ball Count",     ballDetector.getBallCount());
+        telemetry.addData("Balls Loaded",   ballDetector.getBallsLoaded());
+        telemetry.addLine("A(gp1)=reset  DU/DD=detect  DR/DL=clear");
         telemetry.update();
     }
 }
