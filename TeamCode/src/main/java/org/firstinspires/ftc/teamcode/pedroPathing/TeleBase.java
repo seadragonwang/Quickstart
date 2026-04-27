@@ -198,7 +198,7 @@ public abstract class TeleBase extends LinearOpMode {
                 batteryVoltage = getBatteryVoltage();
 
                 ShooterModel.ShotSolution sol = shooterModel.solve(filteredDistance, batteryVoltage);
-                targetOuttakeVelocity = Range.clip(sol.velocityTicksPerSec, 1100, UPPER_LIMIT_VELOCITY);
+                targetOuttakeVelocity = Range.clip(sol.velocityTicksPerSec + 90, 1100, UPPER_LIMIT_VELOCITY);
 
                 if (Math.abs(sol.hoodPos - hoodPos) > 0.006) {
                     hoodPos = sol.hoodPos;

@@ -37,7 +37,7 @@ public class CONSTANTS {
     public static double TURRET_ANGLE_OFFSET_DEG = 0.0;
     // Extra trim applied ONLY when turret turns right (errorDegrees < 0).
     // If turret overshoots right only when turning right, increase this (positive = correct left).
-    public static double TURRET_ANGLE_OFFSET_RIGHT_DEG = 0.0;
+    public static double TURRET_ANGLE_OFFSET_RIGHT_DEG = 1;
     // Scale factor applied to errorDegrees before lookup. Values < 1.0 reduce overshoot on both sides.
     // If turret overshoots both left AND right, reduce this below 1.0 (e.g. 0.85).
     public static double TURRET_ANGLE_SCALE = 0.85;
