@@ -14,7 +14,7 @@ public class RedCloseAuto extends AutoBase {
     { launchTime = 1100; } // override default
 
     private final Pose startPose = new Pose(128.5, 112.5, Math.toRadians(0));
-    private final Pose scorePose = new Pose(94, 82, Math.toRadians(0)); // Wheel touches launch triangle, closer to goal
+    private final Pose scorePose = new Pose(94, 82.5, Math.toRadians(0)); // Wheel touches launch triangle, closer to goal
     private final Pose pickup1PoseStart = new Pose(104, 55, Math.toRadians(0));
     private final Pose pickup1PoseEnd = new Pose(134, 55, Math.toRadians(0));
     private final Pose openGateGrabStartPose = new Pose(122, 58, Math.toRadians(25));
