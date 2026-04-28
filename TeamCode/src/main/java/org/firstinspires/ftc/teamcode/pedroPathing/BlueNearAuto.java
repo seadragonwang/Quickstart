@@ -13,10 +13,10 @@ public class BlueNearAuto extends AutoBase {
 
     private final Pose startPose = new Pose(15.5, 112.5, Math.toRadians(180));
     private final Pose scorePose = new Pose(50, 82, Math.toRadians(180)); // Wheel touches launch triangle
-    private final Pose pickup1PoseStart = new Pose(24, 52, Math.toRadians(180));
+    private final Pose pickup1PoseStart = new Pose(26, 52, Math.toRadians(180));
     private final Pose pickup1PoseEnd = new Pose(16, 52, Math.toRadians(180));
     private final Pose openGateGrabStartPose = new Pose(17.5, 60, Math.toRadians(161));
-    private final Pose openGateGrabEndPose = new Pose(11.5, 60, Math.toRadians(161));
+    private final Pose openGateGrabEndPose = new Pose(11, 60, Math.toRadians(161));
     private final Pose pickup2PoseStart = new Pose(40, 82, Math.toRadians(180));
     private final Pose pickup2PoseEnd = new Pose(13, 82, Math.toRadians(180));
     private final Pose leavePose = new Pose(36, 70, Math.toRadians(180));
@@ -40,6 +40,13 @@ public class BlueNearAuto extends AutoBase {
     @Override
     protected Pose getStartPose() {
         return startPose;
+    }
+
+    @Override
+    public void start() {
+        // Start flywheel early so it's at full speed by the time we reach score position
+        launcher.setState(Launcher.LauncherState.START_LAUNCHING_BLUE_NEAR);
+        super.start();
     }
 
     @Override
@@ -96,7 +103,7 @@ public class BlueNearAuto extends AutoBase {
 
         // openGateStartGrab2: Fast approach to gate area (second time)
         openGateStartGrab2 = follower.pathBuilder()
-                .addPath(new BezierCurve(scorePose, new Pose(42, 70), openGateGrabStartPose))
+                .addPath(new BezierCurve(scorePose, new Pose(43, 64), openGateGrabStartPose))
                 .setLinearHeadingInterpolation(scorePose.getHeading(), openGateGrabStartPose.getHeading())
                 .addParametricCallback(0.1, () -> launcher.setState(Launcher.LauncherState.PICKUP))
                 .build();
@@ -142,10 +149,11 @@ public class BlueNearAuto extends AutoBase {
         switch (pathState) {
             // === SCORE 1 ===
             case 0:
+                launcher.setState(Launcher.LauncherState.START_LAUNCHING_BLUE_NEAR);
                 follower.followPath(score1, 1, true);
                 setPathState(1);
                 break;
-            case 1: // Arrived → wait for flywheel then launch immediately
+            case 1: // Arrived → wait for flywheel ready, then launch
                 if (!follower.isBusy() && launcher.isFlywheelReady()) {
                     launcher.setState(Launcher.LauncherState.LAUNCH);
                     setPathState(3);
@@ -172,14 +180,14 @@ public class BlueNearAuto extends AutoBase {
                 }
                 break;
 
-            // === SCORE 2 (callback preps launcher at 10%) ===
-            case 6: // Arrived → launch
-                if (!follower.isBusy()) {
+            // === SCORE 2 ===
+            case 6:
+                if (!follower.isBusy() && launcher.isFlywheelReady()) {
                     launcher.setState(Launcher.LauncherState.LAUNCH);
                     setPathState(7);
                 }
                 break;
-            case 7: // Wait for all balls
+            case 7:
                 if (actionTimer.getElapsedTime() > launchTime) {
                     follower.followPath(openGateStartGrab, 1.0, true);
                     setPathState(8);
@@ -193,21 +201,21 @@ public class BlueNearAuto extends AutoBase {
                     setPathState(9);
                 }
                 break;
-            case 9: // Wait for pickup
+            case 9:
                 if (!follower.isBusy() && actionTimer.getElapsedTime() > grabTime) {
                     follower.followPath(score3, 1.0, true);
                     setPathState(10);
                 }
                 break;
 
-            // === SCORE 3 (callback preps launcher at 10%) ===
-            case 10: // Arrived → launch
-                if (!follower.isBusy()) {
+            // === SCORE 3 ===
+            case 10:
+                if (!follower.isBusy() && launcher.isFlywheelReady()) {
                     launcher.setState(Launcher.LauncherState.LAUNCH);
                     setPathState(11);
                 }
                 break;
-            case 11: // Wait for all balls
+            case 11:
                 if (actionTimer.getElapsedTime() > launchTime) {
                     follower.followPath(openGateStartGrab2, 1.0, true);
                     setPathState(12);
@@ -221,21 +229,21 @@ public class BlueNearAuto extends AutoBase {
                     setPathState(13);
                 }
                 break;
-            case 13: // Wait for pickup
+            case 13:
                 if (!follower.isBusy() && actionTimer.getElapsedTime() > grabTime) {
                     follower.followPath(score4, 1.0, true);
                     setPathState(14);
                 }
                 break;
 
-            // === SCORE 4 (callback preps launcher at 10%) ===
-            case 14: // Arrived → launch
-                if (!follower.isBusy()) {
+            // === SCORE 4 ===
+            case 14:
+                if (!follower.isBusy() && launcher.isFlywheelReady()) {
                     launcher.setState(Launcher.LauncherState.LAUNCH);
                     setPathState(15);
                 }
                 break;
-            case 15: // Wait for all balls, then go to pickup 2
+            case 15:
                 if (actionTimer.getElapsedTime() > launchTime) {
                     follower.followPath(pickup2, 1, false);
                     setPathState(16);
@@ -256,14 +264,14 @@ public class BlueNearAuto extends AutoBase {
                 }
                 break;
 
-            // === SCORE 5 (callback preps launcher at 10%) ===
-            case 18: // Arrived → launch
-                if (!follower.isBusy()) {
+            // === SCORE 5 ===
+            case 18:
+                if (!follower.isBusy() && launcher.isFlywheelReady()) {
                     launcher.setState(Launcher.LauncherState.LAUNCH);
                     setPathState(19);
                 }
                 break;
-            case 19: // Wait for all balls, then leave
+            case 19:
                 if (actionTimer.getElapsedTime() > launchTime) {
                     follower.followPath(leave, 1, true);
                     setPathState(20);

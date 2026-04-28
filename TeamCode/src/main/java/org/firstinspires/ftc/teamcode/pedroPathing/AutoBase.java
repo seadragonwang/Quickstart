@@ -86,6 +86,9 @@ public abstract class AutoBase extends OpMode {
         telemetry.addData("x", follower.getPose().getX());
         telemetry.addData("y", follower.getPose().getY());
         telemetry.addData("heading (deg)", Math.toDegrees(follower.getPose().getHeading()));
+        telemetry.addData("flywheel vel", launcher.getOuttakeVelocity());
+        telemetry.addData("flywheel ready", launcher.isFlywheelReady());
+        telemetry.addData("launcher state", launcher.getState());
         telemetry.update();
     }
 }

@@ -30,12 +30,13 @@ public class BlueFarAuto extends AutoBase {
     private final Pose startPose = new Pose(55.8, 7.5, Math.toRadians(180));
     private final Pose pickup1PoseStart = new Pose(42, 36, Math.toRadians(180));
     private final Pose pickup1PoseEnd = new Pose(14, 36, Math.toRadians(180));
-    private final Pose scorePose = new Pose(53, 19.5, Math.toRadians(180));
+    private final Pose scorePose = new Pose(60, 18, Math.toRadians(180)); // Wheel must be inside far launch zone triangle (48,0)-(72,24)-(96,0)
     private final Pose pickup2PoseStart = new Pose(16, 10, Math.toRadians(180));
     private final Pose pickup2PoseEnd = new Pose(13, 10, Math.toRadians(180));
     private final Pose leavePose = new Pose(44, 25, Math.toRadians(180));
 
     private PathChain
+            score1,
             pickup1,
             pickup1Path,
             score2,
@@ -59,6 +60,13 @@ public class BlueFarAuto extends AutoBase {
     }
 
     @Override
+    public void start() {
+        // Start flywheel early so it's at full speed before first shot
+        launcher.setState(Launcher.LauncherState.START_LAUNCHING_BLUE_FAR);
+        super.start();
+    }
+
+    @Override
     public void init() {
         super.init();
         ballDetector = new LimelightBallDetector();
@@ -74,9 +82,16 @@ public class BlueFarAuto extends AutoBase {
 
     @Override
     protected void buildPaths() {
-        // pickup1: Switch to pickup mode mid-path
+        // score1: Move from start to score position, spin up flywheel mid-path
+        score1 = follower.pathBuilder()
+                .addPath(new BezierCurve(startPose, new Pose(56, 14), scorePose))
+                .setLinearHeadingInterpolation(startPose.getHeading(), scorePose.getHeading())
+                .addParametricCallback(0.0, () -> launcher.setState(Launcher.LauncherState.START_LAUNCHING_BLUE_FAR))
+                .build();
+
+        // pickup1: From score position to pickup, switch to pickup mode mid-path
         pickup1 = follower.pathBuilder()
-                .addPath(new BezierCurve(startPose, new Pose(56, 26), pickup1PoseStart))
+                .addPath(new BezierCurve(scorePose, new Pose(56, 26), pickup1PoseStart))
                 .setLinearHeadingInterpolation(startPose.getHeading(), pickup1PoseStart.getHeading())
                 .addParametricCallback(0.2, () -> launcher.setState(Launcher.LauncherState.PICKUP))
                 .build();
@@ -214,13 +229,14 @@ public class BlueFarAuto extends AutoBase {
     @Override
     protected void autonomousPathUpdate() {
         switch (pathState) {
-            // === SCORE 1 (preloaded balls — launch from start position) ===
+            // === SCORE 1 (move to score position, then shoot preloaded balls) ===
             case 0:
                 launcher.setState(Launcher.LauncherState.START_LAUNCHING_BLUE_FAR);
+                follower.followPath(score1, 1, true);
                 setPathState(1);
                 break;
-            case 1: // Wait for flywheel to reach target velocity
-                if (launcher.isFlywheelReady()) {
+            case 1: // Arrived at score position → wait for flywheel ready, then launch
+                if (!follower.isBusy() && launcher.isFlywheelReady()) {
                     launcher.setState(Launcher.LauncherState.LAUNCH);
                     setPathState(2);
                 }
@@ -249,7 +265,7 @@ public class BlueFarAuto extends AutoBase {
 
             // === SCORE 2 (callback preps launcher at 30%) ===
             case 5: // Arrived → launch
-                if (!follower.isBusy()) {
+                if (!follower.isBusy() && launcher.isFlywheelReady()) {
                     launcher.setState(Launcher.LauncherState.LAUNCH);
                     setPathState(6);
                 }
@@ -278,7 +294,7 @@ public class BlueFarAuto extends AutoBase {
 
             // === SCORE 3 (callback preps launcher at 30%) ===
             case 9: // Arrived → launch
-                if (!follower.isBusy()) {
+                if (!follower.isBusy() && launcher.isFlywheelReady()) {
                     launcher.setState(Launcher.LauncherState.LAUNCH);
                     setPathState(10);
                 }
@@ -306,7 +322,7 @@ public class BlueFarAuto extends AutoBase {
 
             // === SCORE 4 (callback preps launcher at 30%) ===
             case 13: // Arrived → launch
-                if (!follower.isBusy()) {
+                if (!follower.isBusy() && launcher.isFlywheelReady()) {
                     launcher.setState(Launcher.LauncherState.LAUNCH);
                     setPathState(14);
                 }
@@ -334,7 +350,7 @@ public class BlueFarAuto extends AutoBase {
 
             // === SCORE 5 (callback preps launcher at 30%) ===
             case 17: // Arrived → launch
-                if (!follower.isBusy()) {
+                if (!follower.isBusy() && launcher.isFlywheelReady()) {
                     launcher.setState(Launcher.LauncherState.LAUNCH);
                     setPathState(18);
                 }
@@ -362,7 +378,7 @@ public class BlueFarAuto extends AutoBase {
 
             // === SCORE 6 (callback preps launcher at 30%) ===
             case 21: // Arrived → launch
-                if (!follower.isBusy()) {
+                if (!follower.isBusy() && launcher.isFlywheelReady()) {
                     launcher.setState(Launcher.LauncherState.LAUNCH);
                     setPathState(22);
                 }

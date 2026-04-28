@@ -11,11 +11,9 @@ import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 @Autonomous(name = "Red Far Auto", group = "OrcaRobotics")
 public class RedFarAuto extends AutoBase {
 
-    { grabTime = 1200; pickupSpeed = 0.8; }
+    { grabTime = 1400; pickupSpeed = 0.9; }
 
     private LimelightBallDetector ballDetector;
-    /** Set to true once we've re-aimed the pickup path toward a detected ball. Reset each pickup. */
-    private boolean ballAimed = false;
 
     /**
      * Inches-per-degree horizontal conversion for pickup path adjustment.
@@ -31,14 +29,15 @@ public class RedFarAuto extends AutoBase {
 
     // Mirrored from BlueFarAuto: X -> 144-X, Y same, heading -> 180°-heading
     private final Pose startPose = new Pose(88.2, 7.5, Math.toRadians(0));
-    private final Pose pickup1PoseStart = new Pose(102, 36, Math.toRadians(0));
-    private final Pose pickup1PoseEnd = new Pose(130, 36, Math.toRadians(0));
-    private final Pose scorePose = new Pose(92, 16.5, Math.toRadians(0));
-    private final Pose pickup2PoseStart = new Pose(128, 9, Math.toRadians(0));
-    private final Pose pickup2PoseEnd = new Pose(131, 9, Math.toRadians(0));
+    private final Pose pickup1PoseStart = new Pose(102, 32, Math.toRadians(0));
+    private final Pose pickup1PoseEnd = new Pose(130, 32, Math.toRadians(0));
+    private final Pose scorePose = new Pose(84, 20, Math.toRadians(0)); // Mirrored: 144-64=80, inside far launch zone
+    private final Pose pickup2PoseStart = new Pose(128, 10, Math.toRadians(0));
+    private final Pose pickup2PoseEnd = new Pose(131, 10, Math.toRadians(0));
     private final Pose leavePose = new Pose(100, 25, Math.toRadians(0));
 
     private PathChain
+            score1,
             pickup1,
             pickup1Path,
             score2,
@@ -62,6 +61,13 @@ public class RedFarAuto extends AutoBase {
     }
 
     @Override
+    public void start() {
+        // Start flywheel early so it's at full speed before first shot
+        launcher.setState(Launcher.LauncherState.START_LAUNCHING_RED_FAR);
+        super.start();
+    }
+
+    @Override
     protected PIDFCoefficients getPidfCoefficients() {
         return Constants.farPidfCoefficients;
     }
@@ -71,14 +77,22 @@ public class RedFarAuto extends AutoBase {
         super.init();
         ballDetector = new LimelightBallDetector();
         ballDetector.init(hardwareMap);
+        ballDetector.switchToBallPipeline();
     }
 
     @Override
     protected void buildPaths() {
-        // pickup1: Switch to pickup mode mid-path
+        // score1: Move from start to score position, spin up flywheel mid-path
+        score1 = follower.pathBuilder()
+                .addPath(new BezierCurve(startPose, new Pose(88, 14), scorePose))
+                .setLinearHeadingInterpolation(startPose.getHeading(), scorePose.getHeading())
+                .addParametricCallback(0.0, () -> launcher.setState(Launcher.LauncherState.START_LAUNCHING_RED_FAR))
+                .build();
+
+        // pickup1: From score position to pickup, switch to pickup mode mid-path
         pickup1 = follower.pathBuilder()
-                .addPath(new BezierCurve(startPose, new Pose(88, 26), pickup1PoseStart))
-                .setLinearHeadingInterpolation(startPose.getHeading(), pickup1PoseStart.getHeading())
+                .addPath(new BezierCurve(scorePose, new Pose(88, 26), pickup1PoseStart))
+                .setLinearHeadingInterpolation(scorePose.getHeading(), pickup1PoseStart.getHeading())
                 .addParametricCallback(0.2, () -> launcher.setState(Launcher.LauncherState.PICKUP))
                 .build();
 
@@ -173,7 +187,6 @@ public class RedFarAuto extends AutoBase {
         telemetry.addData("Ball ty", ballDetector.getTy());
         telemetry.addData("Ball area", ballDetector.getArea());
         telemetry.addData("Ball status", ballDetector.getStatus());
-        telemetry.addData("Ball aimed", ballAimed);
     }
 
     /**
@@ -194,38 +207,33 @@ public class RedFarAuto extends AutoBase {
     }
 
     /**
-     * If a ball is detected and not yet aimed, interrupt the current pickup path
-     * and replace it with one aimed at the ball. Only fires once per pickup.
+     * Build a pickup path from the given start aimed at the detected ball (or defaultEnd
+     * if no ball is visible).
      */
-    private void tryAimAtBall(Pose defaultEnd) {
-        if (ballAimed) return;
+    private PathChain buildAimedPickupPath(Pose start, Pose defaultEnd) {
         ballDetector.update();
-        if (ballDetector.hasBallTarget() && Math.abs(ballDetector.getTx()) > BALL_TX_THRESHOLD) {
-            Pose currentPose = follower.getPose();
-            Pose aimed = getAdjustedPickupEnd(defaultEnd);
-            PathChain correctedPath = follower.pathBuilder()
-                    .addPath(new BezierLine(currentPose, aimed))
-                    .build();
-            follower.followPath(correctedPath, pickupSpeed, true);
-            ballAimed = true;
-        }
+        Pose aimed = getAdjustedPickupEnd(defaultEnd);
+        return follower.pathBuilder()
+                .addPath(new BezierLine(start, aimed))
+                .build();
     }
 
     @Override
     protected void autonomousPathUpdate() {
         switch (pathState) {
-            // === SCORE 1 (preloaded balls — launch from start position) ===
+            // === SCORE 1 (move to score position, then shoot preloaded balls) ===
             case 0:
                 launcher.setState(Launcher.LauncherState.START_LAUNCHING_RED_FAR);
+                follower.followPath(score1, 1, true);
                 setPathState(1);
                 break;
-            case 1:
-                if (launcher.isFlywheelReady()) {
+            case 1: // Arrived at score position → wait for flywheel ready, then launch
+                if (!follower.isBusy() && launcher.isFlywheelReady()) {
                     launcher.setState(Launcher.LauncherState.LAUNCH);
                     setPathState(2);
                 }
                 break;
-            case 2:
+            case 2: // Wait for all balls to launch
                 if (actionTimer.getElapsedTime() > launchTime) {
                     follower.followPath(pickup1, 1, true);
                     setPathState(3);
@@ -235,16 +243,13 @@ public class RedFarAuto extends AutoBase {
             // === PICKUP 1 ===
             case 3:
                 if (!follower.isBusy()) {
-                    ballAimed = false;
-                    ballDetector.switchToBallPipeline();
                     follower.followPath(pickup1Path, pickupSpeed, true);
                     setPathState(4);
                 }
                 break;
             case 4:
-                tryAimAtBall(pickup1PoseEnd);
+                // Spike-mark row — no aiming needed, balls are in a fixed row
                 if (!follower.isBusy()) {
-                    ballDetector.switchToAprilTagPipeline();
                     follower.followPath(score2, 1, true);
                     setPathState(5);
                 }
@@ -252,7 +257,7 @@ public class RedFarAuto extends AutoBase {
 
             // === SCORE 2 ===
             case 5:
-                if (!follower.isBusy()) {
+                if (!follower.isBusy() && launcher.isFlywheelReady()) {
                     launcher.setState(Launcher.LauncherState.LAUNCH);
                     setPathState(6);
                 }
@@ -267,16 +272,12 @@ public class RedFarAuto extends AutoBase {
             // === PICKUP 2 ===
             case 7:
                 if (!follower.isBusy()) {
-                    ballAimed = false;
-                    ballDetector.switchToBallPipeline();
-                    follower.followPath(pickup2Path, pickupSpeed, true);
+                    follower.followPath(buildAimedPickupPath(pickup2PoseStart, pickup2PoseEnd), pickupSpeed, true);
                     setPathState(8);
                 }
                 break;
             case 8:
-                tryAimAtBall(pickup2PoseEnd);
                 if (!follower.isBusy() && actionTimer.getElapsedTime() > grabTime) {
-                    ballDetector.switchToAprilTagPipeline();
                     follower.followPath(score3, 1, true);
                     setPathState(9);
                 }
@@ -284,7 +285,7 @@ public class RedFarAuto extends AutoBase {
 
             // === SCORE 3 ===
             case 9:
-                if (!follower.isBusy()) {
+                if (!follower.isBusy() && launcher.isFlywheelReady()) {
                     launcher.setState(Launcher.LauncherState.LAUNCH);
                     setPathState(10);
                 }
@@ -299,16 +300,12 @@ public class RedFarAuto extends AutoBase {
             // === PICKUP 3 ===
             case 11:
                 if (!follower.isBusy()) {
-                    ballAimed = false;
-                    ballDetector.switchToBallPipeline();
-                    follower.followPath(pickup3Path, pickupSpeed, true);
+                    follower.followPath(buildAimedPickupPath(pickup2PoseStart, pickup2PoseEnd), pickupSpeed, true);
                     setPathState(12);
                 }
                 break;
             case 12:
-                tryAimAtBall(pickup2PoseEnd);
                 if (!follower.isBusy() && actionTimer.getElapsedTime() > grabTime) {
-                    ballDetector.switchToAprilTagPipeline();
                     follower.followPath(score4, 1, true);
                     setPathState(13);
                 }
@@ -316,7 +313,7 @@ public class RedFarAuto extends AutoBase {
 
             // === SCORE 4 ===
             case 13:
-                if (!follower.isBusy()) {
+                if (!follower.isBusy() && launcher.isFlywheelReady()) {
                     launcher.setState(Launcher.LauncherState.LAUNCH);
                     setPathState(14);
                 }
@@ -331,16 +328,12 @@ public class RedFarAuto extends AutoBase {
             // === PICKUP 4 ===
             case 15:
                 if (!follower.isBusy()) {
-                    ballAimed = false;
-                    ballDetector.switchToBallPipeline();
-                    follower.followPath(pickup4Path, pickupSpeed, true);
+                    follower.followPath(buildAimedPickupPath(pickup2PoseStart, pickup2PoseEnd), pickupSpeed, true);
                     setPathState(16);
                 }
                 break;
             case 16:
-                tryAimAtBall(pickup2PoseEnd);
                 if (!follower.isBusy() && actionTimer.getElapsedTime() > grabTime) {
-                    ballDetector.switchToAprilTagPipeline();
                     follower.followPath(score5, 1, true);
                     setPathState(17);
                 }
@@ -348,7 +341,7 @@ public class RedFarAuto extends AutoBase {
 
             // === SCORE 5 ===
             case 17:
-                if (!follower.isBusy()) {
+                if (!follower.isBusy() && launcher.isFlywheelReady()) {
                     launcher.setState(Launcher.LauncherState.LAUNCH);
                     setPathState(18);
                 }
@@ -363,16 +356,12 @@ public class RedFarAuto extends AutoBase {
             // === PICKUP 5 ===
             case 19:
                 if (!follower.isBusy()) {
-                    ballAimed = false;
-                    ballDetector.switchToBallPipeline();
-                    follower.followPath(pickup5Path, pickupSpeed, true);
+                    follower.followPath(buildAimedPickupPath(pickup2PoseStart, pickup2PoseEnd), pickupSpeed, true);
                     setPathState(20);
                 }
                 break;
             case 20:
-                tryAimAtBall(pickup2PoseEnd);
                 if (!follower.isBusy() && actionTimer.getElapsedTime() > grabTime) {
-                    ballDetector.switchToAprilTagPipeline();
                     follower.followPath(score6, 1, true);
                     setPathState(21);
                 }
@@ -380,7 +369,7 @@ public class RedFarAuto extends AutoBase {
 
             // === SCORE 6 ===
             case 21:
-                if (!follower.isBusy()) {
+                if (!follower.isBusy() && launcher.isFlywheelReady()) {
                     launcher.setState(Launcher.LauncherState.LAUNCH);
                     setPathState(22);
                 }

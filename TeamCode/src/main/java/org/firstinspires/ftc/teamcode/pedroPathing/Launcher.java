@@ -43,17 +43,20 @@ public class Launcher {
     private Timer launchTimer = new Timer();
     public final static double JR_OUTTAKE_BLOCK = 0.78;
     public final static double JR_OUTTAKE_OPEN = 0.0;
-    double FAR_OUTTAKE_VEL = 2100;
+    double FAR_OUTTAKE_VEL = 2250;
     double NEAR_OUTTAKE_VEL = 1620;
-    double BLUE_NEAR_TURRET_POS = 0.644;
-    double BLUE_FAR_TURRET_POS = 0.388; // TODO: tune — currently aiming right of goal; adjust until centered
+    double BLUE_NEAR_TURRET_POS = 0.64;
+    double BLUE_FAR_TURRET_POS = 0.70; // TODO: tune — currently aiming right of goal; adjust until centered
     double RED_NEAR_TURRET_POS = 0.36/*0.582*/;
-    double RED_FAR_TURRET_POS = 0.617;
+    double RED_FAR_TURRET_POS = 0.29;
     double lastOuttakeVel = 0; // remember flywheel speed for LAUNCH state
     // PIDF stored so we can restore normal F after spin-up
     private double normalP, normalI, normalD, normalF;
-    private static final double SPINUP_F_BOOST = 20.0; // higher F during initial spin-up
+    private static final double SPINUP_F_BOOST = 14.0; // F*2250≈31500, safely under 32767 limit
     private boolean spinupFActive = false;
+    private Timer spinupReadyTimer = new Timer();
+    private boolean spinupReadyTimerStarted = false;
+    private static final double SPINUP_SETTLE_MS = 300; // stay at speed for 300ms before removing boost
 
 
     public Launcher(HardwareMap hardwareMap, PIDFCoefficients pidfCoefficients) {
@@ -98,31 +101,42 @@ public class Launcher {
     public void setState(LauncherState state) {
         launcherState = state;
         stateTimer.resetTimer();
-        // Apply boosted F on first spin-up to reach speed faster
-        if (state == LauncherState.START_LAUNCHING_BLUE_NEAR
+        // Boost F only on the very first spin-up (from IDLE) to reach speed faster
+        if (!spinupFActive && lastOuttakeVel == 0 &&
+                (state == LauncherState.START_LAUNCHING_BLUE_NEAR
                 || state == LauncherState.START_LAUNCHING_BLUE_FAR
                 || state == LauncherState.START_LAUNCHING_RED_NEAR
-                || state == LauncherState.START_LAUNCHING_RED_FAR) {
-            if (!spinupFActive) {
-                spinupFActive = true;
-                outtake1.setVelocityPIDFCoefficients(normalP, normalI, normalD, SPINUP_F_BOOST);
-                outtake2.setVelocityPIDFCoefficients(normalP, normalI, normalD, SPINUP_F_BOOST);
-            }
+                || state == LauncherState.START_LAUNCHING_RED_FAR)) {
+            spinupFActive = true;
+            outtake1.setVelocityPIDFCoefficients(normalP, normalI, normalD, SPINUP_F_BOOST);
+            outtake2.setVelocityPIDFCoefficients(normalP, normalI, normalD, SPINUP_F_BOOST);
         }
     }
 
     public void update(){
-        // Restore normal F once flywheel reaches target speed
-        if (spinupFActive && isFlywheelReady()) {
-            spinupFActive = false;
-            outtake1.setVelocityPIDFCoefficients(normalP, normalI, normalD, normalF);
-            outtake2.setVelocityPIDFCoefficients(normalP, normalI, normalD, normalF);
+        // Restore normal F once flywheel has been at target speed for SPINUP_SETTLE_MS
+        if (spinupFActive) {
+            if (isFlywheelReady()) {
+                if (!spinupReadyTimerStarted) {
+                    spinupReadyTimer.resetTimer();
+                    spinupReadyTimerStarted = true;
+                }
+                if (spinupReadyTimer.getElapsedTimeSeconds() * 1000 >= SPINUP_SETTLE_MS) {
+                    spinupFActive = false;
+                    spinupReadyTimerStarted = false;
+                    outtake1.setVelocityPIDFCoefficients(normalP, normalI, normalD, normalF);
+                    outtake2.setVelocityPIDFCoefficients(normalP, normalI, normalD, normalF);
+                }
+            } else {
+                // Lost speed — reset the settle timer
+                spinupReadyTimerStarted = false;
+            }
         }
         switch (launcherState){
             case START_LAUNCHING_BLUE_NEAR:
                 lastOuttakeVel = NEAR_OUTTAKE_VEL;
-                outtake1.setVelocity(NEAR_OUTTAKE_VEL-120);
-                outtake2.setVelocity(NEAR_OUTTAKE_VEL-120);
+                outtake1.setVelocity(NEAR_OUTTAKE_VEL);
+                outtake2.setVelocity(NEAR_OUTTAKE_VEL);
                 intake1.setPower(0);
                 intake2.setPower(0);
                 turretServo.setPosition(Range.clip(BLUE_NEAR_TURRET_POS, 0.28, 0.694)); // 0.422
@@ -135,7 +149,7 @@ public class Launcher {
                 intake1.setPower(0);
                 intake2.setPower(0);
                 turretServo.setPosition(Range.clip(BLUE_FAR_TURRET_POS, 0.28, 0.694)); // 0.422
-                hoodServo.setPosition(Range.clip(0.43,HOOD_MIN_POS,HOOD_MAX_POS));
+                hoodServo.setPosition(Range.clip(0.50,HOOD_MIN_POS,HOOD_MAX_POS));
                 break;
             case START_LAUNCHING_RED_NEAR:
                 lastOuttakeVel = NEAR_OUTTAKE_VEL;
@@ -180,7 +194,7 @@ public class Launcher {
     }
 
     public boolean isFlywheelReady() {
-        return lastOuttakeVel > 0 && Math.abs(outtake1.getVelocity()) >= lastOuttakeVel * 0.95;
+        return lastOuttakeVel > 0 && Math.abs(outtake1.getVelocity()) >= lastOuttakeVel * 0.9;
     }
     public void updateTurret(Pose robotPose){
         double turretPos = 0.5;

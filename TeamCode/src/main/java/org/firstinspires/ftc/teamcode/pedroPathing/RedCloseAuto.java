@@ -46,6 +46,13 @@ public class RedCloseAuto extends AutoBase {
     }
 
     @Override
+    public void start() {
+        // Start flywheel early so it's at full speed by the time we reach score position
+        launcher.setState(Launcher.LauncherState.START_LAUNCHING_RED_NEAR);
+        super.start();
+    }
+
+    @Override
     protected PIDFCoefficients getPidfCoefficients() {
         return Constants.closePidfCoefficients;
     }
@@ -98,7 +105,7 @@ public class RedCloseAuto extends AutoBase {
 
         // openGateStartGrab2: Fast approach to gate area (second time)
         openGateStartGrab2 = follower.pathBuilder()
-                .addPath(new BezierCurve(scorePose, new Pose(102, 70), openGateGrabStartPose))
+                .addPath(new BezierCurve(scorePose, new Pose(101, 64), openGateGrabStartPose))
                 .setLinearHeadingInterpolation(scorePose.getHeading(), openGateGrabStartPose.getHeading())
                 .addParametricCallback(0.1, () -> launcher.setState(Launcher.LauncherState.PICKUP))
                 .build();
@@ -144,10 +151,11 @@ public class RedCloseAuto extends AutoBase {
         switch (pathState) {
             // === SCORE 1 ===
             case 0:
+                launcher.setState(Launcher.LauncherState.START_LAUNCHING_RED_NEAR);
                 follower.followPath(score1, 1, true);
                 setPathState(1);
                 break;
-            case 1: // Arrived → wait for flywheel then launch
+            case 1: // Arrived → wait for flywheel ready, then launch
                 if (!follower.isBusy() && launcher.isFlywheelReady()) {
                     launcher.setState(Launcher.LauncherState.LAUNCH);
                     setPathState(3);
@@ -175,13 +183,13 @@ public class RedCloseAuto extends AutoBase {
                 break;
 
             // === SCORE 2 ===
-            case 6: // Arrived → launch
-                if (!follower.isBusy()) {
+            case 6:
+                if (!follower.isBusy() && launcher.isFlywheelReady()) {
                     launcher.setState(Launcher.LauncherState.LAUNCH);
                     setPathState(7);
                 }
                 break;
-            case 7: // Wait for all balls
+            case 7:
                 if (actionTimer.getElapsedTime() > launchTime) {
                     follower.followPath(openGateStartGrab, 1.0, true);
                     setPathState(8);
@@ -195,7 +203,7 @@ public class RedCloseAuto extends AutoBase {
                     setPathState(9);
                 }
                 break;
-            case 9: // Wait for pickup
+            case 9:
                 if (!follower.isBusy() && actionTimer.getElapsedTime() > grabTime) {
                     follower.followPath(score3, 1.0, true);
                     setPathState(10);
@@ -203,13 +211,13 @@ public class RedCloseAuto extends AutoBase {
                 break;
 
             // === SCORE 3 ===
-            case 10: // Arrived → launch
-                if (!follower.isBusy()) {
+            case 10:
+                if (!follower.isBusy() && launcher.isFlywheelReady()) {
                     launcher.setState(Launcher.LauncherState.LAUNCH);
                     setPathState(11);
                 }
                 break;
-            case 11: // Wait for all balls
+            case 11:
                 if (actionTimer.getElapsedTime() > launchTime) {
                     follower.followPath(openGateStartGrab2, 1.0, true);
                     setPathState(12);
@@ -223,7 +231,7 @@ public class RedCloseAuto extends AutoBase {
                     setPathState(13);
                 }
                 break;
-            case 13: // Wait for pickup
+            case 13:
                 if (!follower.isBusy() && actionTimer.getElapsedTime() > grabTime) {
                     follower.followPath(score4, 1.0, true);
                     setPathState(14);
@@ -231,13 +239,13 @@ public class RedCloseAuto extends AutoBase {
                 break;
 
             // === SCORE 4 ===
-            case 14: // Arrived → launch
-                if (!follower.isBusy()) {
+            case 14:
+                if (!follower.isBusy() && launcher.isFlywheelReady()) {
                     launcher.setState(Launcher.LauncherState.LAUNCH);
                     setPathState(15);
                 }
                 break;
-            case 15: // Wait for all balls, then go to pickup 2
+            case 15:
                 if (actionTimer.getElapsedTime() > launchTime) {
                     follower.followPath(pickup2, 1, false);
                     setPathState(16);
@@ -259,13 +267,13 @@ public class RedCloseAuto extends AutoBase {
                 break;
 
             // === SCORE 5 ===
-            case 18: // Arrived → launch
-                if (!follower.isBusy()) {
+            case 18:
+                if (!follower.isBusy() && launcher.isFlywheelReady()) {
                     launcher.setState(Launcher.LauncherState.LAUNCH);
                     setPathState(19);
                 }
                 break;
-            case 19: // Wait for all balls, then leave
+            case 19:
                 if (actionTimer.getElapsedTime() > launchTime) {
                     follower.followPath(leave, 1, true);
                     setPathState(20);
