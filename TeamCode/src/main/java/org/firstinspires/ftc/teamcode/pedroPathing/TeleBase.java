@@ -109,7 +109,7 @@ public abstract class TeleBase extends LinearOpMode {
     protected double intake1Vel = 0.0;
     protected INTAKE_STATUS intakeStatus = INTAKE_STATUS.INTAKE_STOPPED;
     protected Servo pivot;
-    protected BallDetectorThread ballDetectorThread;
+    //protected BallDetectorThread ballDetectorThread;
     protected LimelightLocalizer limelightLocalizer;
 
     protected ElapsedTime intakeTimer = new ElapsedTime();
@@ -266,7 +266,7 @@ public abstract class TeleBase extends LinearOpMode {
                 intake1Power = CLOSE_INTAKE_POWER;
                 intakeStatus = INTAKE_STATUS.INTAKE_STARTED;
                 if (targetOuttakeVelocity > 0) {
-                    ballDetectorThread.getBallDetector().resetLoadedCount();
+                    //ballDetectorThread.getBallDetector().resetLoadedCount();
                 }
             } else if (gamepad2.b) {
                 intake2Power = 0.0;
@@ -304,7 +304,7 @@ public abstract class TeleBase extends LinearOpMode {
             showTelemetry();
             telemetry.update();
         }
-        ballDetectorThread.stopThread();
+        //ballDetectorThread.stopThread();
     }
 
     // --- Hardware init ---
@@ -318,8 +318,8 @@ public abstract class TeleBase extends LinearOpMode {
         initIntake();
         initTurret();
 
-        ballDetectorThread = new BallDetectorThread(hardwareMap);
-        ballDetectorThread.start();
+        //ballDetectorThread = new BallDetectorThread(hardwareMap);
+        //ballDetectorThread.start();
 
         limelightLocalizer = new LimelightLocalizer();
         limelightLocalizer.init(hardwareMap, getLimelightStartingHeadingDeg());
@@ -446,8 +446,8 @@ public abstract class TeleBase extends LinearOpMode {
         telemetry.addData("Target Velocity", targetOuttakeVelocity);
         telemetry.addData("Flywheel1 Velocity", outtake1.getVelocity());
         telemetry.addData("Flywheel2 Velocity", outtake2.getVelocity());
-        telemetry.addData("Balls loaded", ballDetectorThread.getBallDetector().getBallsLoaded());
-        telemetry.addData("Ball distance mm", ballDetectorThread.getBallDetector().getDistanceMM());
+        //telemetry.addData("Balls loaded", ballDetectorThread.getBallDetector().getBallsLoaded());
+        //telemetry.addData("Ball distance mm", ballDetectorThread.getBallDetector().getDistanceMM());
         telemetry.addData("Battery V", batteryVoltage);
         telemetry.addData("Distance filt", filteredDistance);
         telemetry.addData("Vel err 1", targetOuttakeVelocity - outtake1.getVelocity());

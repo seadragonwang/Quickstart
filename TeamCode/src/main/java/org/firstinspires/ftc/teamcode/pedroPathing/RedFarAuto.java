@@ -13,20 +13,6 @@ public class RedFarAuto extends AutoBase {
 
     { grabTime = 1400; pickupSpeed = 0.9; }
 
-    private LimelightBallDetector ballDetector;
-
-    /**
-     * Inches-per-degree horizontal conversion for pickup path adjustment.
-     * Robot heading is 0° (facing +X), so:
-     *   tx > 0 (ball right of camera) → +Y field direction → increase Y
-     *   tx < 0 (ball left of camera)  → -Y field direction → decrease Y
-     *   yAdjust = +tx * BALL_TX_TO_INCHES  (opposite sign from BlueFarAuto)
-     */
-    private static final double BALL_TX_TO_INCHES = 0.6;
-    private static final double BALL_TX_THRESHOLD = 3.0;
-    private static final double PICKUP_Y_MIN = 4.0;
-    private static final double PICKUP_Y_MAX = 44.0;
-
     // Mirrored from BlueFarAuto: X -> 144-X, Y same, heading -> 180°-heading
     private final Pose startPose = new Pose(88.2, 7.5, Math.toRadians(0));
     private final Pose pickup1PoseStart = new Pose(102, 32, Math.toRadians(0));
@@ -50,9 +36,6 @@ public class RedFarAuto extends AutoBase {
             pickup4,
             pickup4Path,
             score5,
-            pickup5,
-            pickup5Path,
-            score6,
             leave;
 
     @Override
@@ -75,9 +58,6 @@ public class RedFarAuto extends AutoBase {
     @Override
     public void init() {
         super.init();
-        ballDetector = new LimelightBallDetector();
-        ballDetector.init(hardwareMap);
-        ballDetector.switchToBallPipeline();
     }
 
     @Override
@@ -157,22 +137,6 @@ public class RedFarAuto extends AutoBase {
                 .addParametricCallback(0.0, () -> launcher.setState(Launcher.LauncherState.START_LAUNCHING_RED_FAR))
                 .build();
 
-        pickup5 = follower.pathBuilder()
-                .addPath(new BezierCurve(scorePose, new Pose(110, 20), new Pose(128, 16), pickup2PoseStart))
-                .setLinearHeadingInterpolation(scorePose.getHeading(), pickup2PoseStart.getHeading())
-                .addParametricCallback(0.2, () -> launcher.setState(Launcher.LauncherState.PICKUP))
-                .build();
-
-        pickup5Path = follower.pathBuilder()
-                .addPath(new BezierLine(pickup2PoseStart, pickup2PoseEnd))
-                .build();
-
-        score6 = follower.pathBuilder()
-                .addPath(new BezierCurve(pickup2PoseEnd, new Pose(115, 21), scorePose))
-                .setLinearHeadingInterpolation(pickup2PoseEnd.getHeading(), scorePose.getHeading())
-                .addParametricCallback(0.0, () -> launcher.setState(Launcher.LauncherState.START_LAUNCHING_RED_FAR))
-                .build();
-
         leave = follower.pathBuilder()
                 .addPath(new BezierCurve(scorePose, new Pose(90, 21), leavePose))
                 .setLinearHeadingInterpolation(scorePose.getHeading(), leavePose.getHeading())
@@ -182,40 +146,6 @@ public class RedFarAuto extends AutoBase {
     @Override
     public void loop() {
         super.loop();
-        telemetry.addData("Ball target", ballDetector.hasBallTarget());
-        telemetry.addData("Ball tx", ballDetector.getTx());
-        telemetry.addData("Ball ty", ballDetector.getTy());
-        telemetry.addData("Ball area", ballDetector.getArea());
-        telemetry.addData("Ball status", ballDetector.getStatus());
-    }
-
-    /**
-     * Compute a pickup end pose shifted toward the detected ball.
-     * Robot heading is 0° (facing +X), so:
-     *   tx > 0 → ball to robot's right → +Y field direction → increase Y
-     *   tx < 0 → ball to robot's left  → -Y field direction → decrease Y
-     */
-    private Pose getAdjustedPickupEnd(Pose defaultEnd) {
-        if (!ballDetector.hasBallTarget()) return defaultEnd;
-        double tx = ballDetector.getTx();
-        if (Math.abs(tx) < BALL_TX_THRESHOLD) return defaultEnd;
-        // +tx → +Y for heading 0° (opposite of BlueFarAuto which uses heading 180°)
-        double yAdjust = tx * BALL_TX_TO_INCHES;
-        double newY = com.qualcomm.robotcore.util.Range.clip(
-                defaultEnd.getY() + yAdjust, PICKUP_Y_MIN, PICKUP_Y_MAX);
-        return new Pose(defaultEnd.getX(), newY, defaultEnd.getHeading());
-    }
-
-    /**
-     * Build a pickup path from the given start aimed at the detected ball (or defaultEnd
-     * if no ball is visible).
-     */
-    private PathChain buildAimedPickupPath(Pose start, Pose defaultEnd) {
-        ballDetector.update();
-        Pose aimed = getAdjustedPickupEnd(defaultEnd);
-        return follower.pathBuilder()
-                .addPath(new BezierLine(start, aimed))
-                .build();
     }
 
     @Override
@@ -240,7 +170,7 @@ public class RedFarAuto extends AutoBase {
                 }
                 break;
 
-            // === PICKUP 1 ===
+            // === PICKUP 1 (spike mark) ===
             case 3:
                 if (!follower.isBusy()) {
                     follower.followPath(pickup1Path, pickupSpeed, true);
@@ -248,7 +178,6 @@ public class RedFarAuto extends AutoBase {
                 }
                 break;
             case 4:
-                // Spike-mark row — no aiming needed, balls are in a fixed row
                 if (!follower.isBusy()) {
                     follower.followPath(score2, 1, true);
                     setPathState(5);
@@ -269,10 +198,10 @@ public class RedFarAuto extends AutoBase {
                 }
                 break;
 
-            // === PICKUP 2 ===
+            // === PICKUP 2 (1st wall cycle) ===
             case 7:
                 if (!follower.isBusy()) {
-                    follower.followPath(buildAimedPickupPath(pickup2PoseStart, pickup2PoseEnd), pickupSpeed, true);
+                    follower.followPath(pickup2Path, pickupSpeed, true);
                     setPathState(8);
                 }
                 break;
@@ -297,10 +226,10 @@ public class RedFarAuto extends AutoBase {
                 }
                 break;
 
-            // === PICKUP 3 ===
+            // === PICKUP 3 (2nd wall cycle) ===
             case 11:
                 if (!follower.isBusy()) {
-                    follower.followPath(buildAimedPickupPath(pickup2PoseStart, pickup2PoseEnd), pickupSpeed, true);
+                    follower.followPath(pickup3Path, pickupSpeed, true);
                     setPathState(12);
                 }
                 break;
@@ -325,10 +254,10 @@ public class RedFarAuto extends AutoBase {
                 }
                 break;
 
-            // === PICKUP 4 ===
+            // === PICKUP 4 (3rd wall cycle) ===
             case 15:
                 if (!follower.isBusy()) {
-                    follower.followPath(buildAimedPickupPath(pickup2PoseStart, pickup2PoseEnd), pickupSpeed, true);
+                    follower.followPath(pickup4Path, pickupSpeed, true);
                     setPathState(16);
                 }
                 break;
@@ -348,41 +277,13 @@ public class RedFarAuto extends AutoBase {
                 break;
             case 18:
                 if (actionTimer.getElapsedTime() > launchTime) {
-                    follower.followPath(pickup5, 1, true);
+                    follower.followPath(leave, 1, true);
                     setPathState(19);
                 }
                 break;
 
-            // === PICKUP 5 ===
-            case 19:
-                if (!follower.isBusy()) {
-                    follower.followPath(buildAimedPickupPath(pickup2PoseStart, pickup2PoseEnd), pickupSpeed, true);
-                    setPathState(20);
-                }
-                break;
-            case 20:
-                if (!follower.isBusy() && actionTimer.getElapsedTime() > grabTime) {
-                    follower.followPath(score6, 1, true);
-                    setPathState(21);
-                }
-                break;
-
-            // === SCORE 6 ===
-            case 21:
-                if (!follower.isBusy() && launcher.isFlywheelReady()) {
-                    launcher.setState(Launcher.LauncherState.LAUNCH);
-                    setPathState(22);
-                }
-                break;
-            case 22:
-                if (actionTimer.getElapsedTime() > launchTime) {
-                    follower.followPath(leave, 1, true);
-                    setPathState(23);
-                }
-                break;
-
             // === LEAVE ===
-            case 23:
+            case 19:
                 if (!follower.isBusy()) {
                     setPathState(-1);
                     requestOpModeStop();
