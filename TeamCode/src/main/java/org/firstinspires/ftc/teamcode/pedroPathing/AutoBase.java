@@ -57,7 +57,7 @@ public abstract class AutoBase extends OpMode {
         actionTimer = new Timer();
         opmodeTimer.resetTimer();
 
-        follower = Constants.createFollower(hardwareMap);
+        follower = Constants.createAutoFollower(hardwareMap);
         launcher = new Launcher(hardwareMap, getPidfCoefficients());
 
         buildPaths();
