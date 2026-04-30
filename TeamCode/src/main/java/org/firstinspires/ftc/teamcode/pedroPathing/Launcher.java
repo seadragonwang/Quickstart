@@ -47,7 +47,7 @@ public class Launcher {
     double NEAR_OUTTAKE_VEL = 1620;
     double BLUE_NEAR_TURRET_POS = 0.64;
     double BLUE_FAR_TURRET_POS = 0.70; // TODO: tune — currently aiming right of goal; adjust until centered
-    double RED_NEAR_TURRET_POS = 0.36/*0.582*/;
+    double RED_NEAR_TURRET_POS = 0.354/*0.582*/;
     double RED_FAR_TURRET_POS = 0.29;
     double lastOuttakeVel = 0; // remember flywheel speed for LAUNCH state
     // PIDF stored so we can restore normal F after spin-up
@@ -140,7 +140,7 @@ public class Launcher {
                 intake1.setPower(0);
                 intake2.setPower(0);
                 turretServo.setPosition(Range.clip(BLUE_NEAR_TURRET_POS, 0.28, 0.694)); // 0.422
-                hoodServo.setPosition(Range.clip(0.93,HOOD_MIN_POS,HOOD_MAX_POS));
+                hoodServo.setPosition(Range.clip(0.92,HOOD_MIN_POS,HOOD_MAX_POS));
                 break;
             case START_LAUNCHING_BLUE_FAR:
                 lastOuttakeVel = FAR_OUTTAKE_VEL;
@@ -158,7 +158,7 @@ public class Launcher {
                 intake1.setPower(0);
                 intake2.setPower(0);
                 turretServo.setPosition(Range.clip(RED_NEAR_TURRET_POS, 0.28, 0.694));
-                hoodServo.setPosition(Range.clip(0.93,HOOD_MIN_POS,HOOD_MAX_POS));
+                hoodServo.setPosition(Range.clip(0.92,HOOD_MIN_POS,HOOD_MAX_POS));
                 break;
             case START_LAUNCHING_RED_FAR:
                 lastOuttakeVel = FAR_OUTTAKE_VEL;

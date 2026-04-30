@@ -22,8 +22,8 @@ public class ShooterModel {
     private static final double[] DIST = {47.638, 57.36, 69.72, 77.21, 91.18, 131.13, 136.7};
 
     // Example values: replace with your tested data
-    private static final double[] HOOD = {0.93, 0.90, 0.88, 0.85, 0.80, 0.436, 0.421};
-    private static final double[] VEL  = {1390, 1420, 1450, 1480, 1570, 2180, 2250};
+    private static final double[] HOOD = {0.93, 0.90, 0.88, 0.83, 0.79, 0.436, 0.421};
+    private static final double[] VEL  = {1390, 1420, 1430, 1440, 1530, 2180, 2250};
 
     // Voltage compensation
     // V_NOM should match the battery voltage at which the VEL table was tuned.

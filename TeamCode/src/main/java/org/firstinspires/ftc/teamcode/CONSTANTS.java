@@ -40,7 +40,7 @@ public class CONSTANTS {
     public static double TURRET_ANGLE_OFFSET_RIGHT_DEG = 0;
     // Scale factor applied to errorDegrees before lookup. Values < 1.0 reduce overshoot on both sides.
     // If turret overshoots both left AND right, reduce this below 1.0 (e.g. 0.85).
-    public static double TURRET_ANGLE_SCALE = 0.95;
+    public static double TURRET_ANGLE_SCALE = 0.9;
     public static final double LIMELIGHT_APRIL_TAG_POS = 0.42;
     public static final double LIMELIGHT_BALL_POS = 0.53;
     public static final double TURRET_POSITION_PER_DEGREE =0.0016798245614035089;
